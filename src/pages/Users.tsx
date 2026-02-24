@@ -1,7 +1,22 @@
-import { useGetAllUsersQuery } from "../features/user";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "../app/store";
+import {
+  getAllUsers,
+  selectAllUsers,
+  selectAllUsersLoading,
+  selectAllUsersError,
+} from "../features/user";
 
 const Users = () => {
-  const { data, isLoading, error } = useGetAllUsersQuery("");
+  const dispatch = useDispatch<AppDispatch>();
+  const data = useSelector(selectAllUsers);
+  const isLoading = useSelector(selectAllUsersLoading);
+  const error = useSelector(selectAllUsersError);
+
+  useEffect(() => {
+    dispatch(getAllUsers());
+  }, [dispatch]);
 
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error loading users</p>;

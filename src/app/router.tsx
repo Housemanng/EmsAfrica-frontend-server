@@ -3,20 +3,40 @@ import Layout from "./layout";
 import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
+import Results from "../pages/Results";
+import ResultWinningAnalysis from "../pages/ResultWinningAnalysis";
 import AdminDashboard from "../pages/AdminDashboard";
 import NotFound from "../pages/ErrorPage";
 import ErrorPage from "../pages/ErrorPage";
 import { ProtectedRoute } from "../middleware/ProtectedRoute";
+import { GuestRoute } from "../middleware/GuestRoute";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Login />, // default route
-    errorElement: <ErrorPage />, // catches global errors
+    element: (
+      <GuestRoute>
+        <Login />
+      </GuestRoute>
+    ),
+    errorElement: <ErrorPage />,
   },
-
-  { path: "/login", element: <Login /> },
-  { path: "/signup", element: <Signup /> },
+  {
+    path: "/login",
+    element: (
+      <GuestRoute>
+        <Login />
+      </GuestRoute>
+    ),
+  },
+  {
+    path: "/signup",
+    element: (
+      <GuestRoute>
+        <Signup />
+      </GuestRoute>
+    ),
+  },
 
   {
     element: (
@@ -27,6 +47,8 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />, // handles errors inside protected routes
     children: [
       { path: "/dashboard", element: <Dashboard /> },
+      { path: "/results", element: <Results /> },
+      { path: "/results/winning-analysis", element: <ResultWinningAnalysis /> },
       { path: "/admin", element: <AdminDashboard /> },
     ],
   },

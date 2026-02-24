@@ -1,10 +1,16 @@
-import { useGetAllAdminsQuery } from "../features/admin/adminApi";
-import { useSelector } from "react-redux";
-import type { RootState } from "../app/store";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllAdmins } from "../features/admin/adminApi";
+import type { AppDispatch, RootState } from "../app/store";
 
 export default function AdminDashboard() {
-  const { data: admins, isLoading } = useGetAllAdminsQuery();
+  const dispatch = useDispatch<AppDispatch>();
+  const { admins, isLoading } = useSelector((state: RootState) => state.admin);
   const role = useSelector((state: RootState) => state.auth.role);
+
+  useEffect(() => {
+    dispatch(getAllAdmins());
+  }, [dispatch]);
 
   if (isLoading) return <p>Loading...</p>;
 

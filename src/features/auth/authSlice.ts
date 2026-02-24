@@ -1,7 +1,15 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
+export interface AuthUser {
+  id: string;
+  username: string;
+  email?: string;
+  organization?: { _id?: string; id?: string; name: string };
+  state?: { _id?: string; name: string };
+}
+
 interface AuthState {
-  user: any | null;
+  user: AuthUser | null;
   token: string | null;
   role: string | null;
 }
@@ -18,10 +26,10 @@ const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{       
+      action: PayloadAction<{
         token: string;
         role: string;
-        user: { id: string; username: string };
+        user: AuthUser;
       }>
     ) => {
       state.user = action.payload.user;
@@ -33,9 +41,31 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       state.role = null;
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("userAuth");
+      }
+    },
+
+    restoreFromStorage: (state) => {
+      if (typeof localStorage === "undefined") return;
+      try {
+        const raw = localStorage.getItem("userAuth");
+        if (!raw) return;
+        const data = JSON.parse(raw) as { token?: string; user?: AuthUser; role?: string };
+        if (data.token && data.user) {
+          state.token = data.token;
+          state.user = data.user;
+          state.role = data.role ?? "user";
+          localStorage.setItem("token", data.token);
+        }
+      } catch {
+        localStorage.removeItem("userAuth");
+        localStorage.removeItem("token");
+      }
     },
   },
 });
 
-export const { setCredentials, logout } = authSlice.actions;
+export const { setCredentials, logout, restoreFromStorage } = authSlice.actions;
 export default authSlice.reducer;
