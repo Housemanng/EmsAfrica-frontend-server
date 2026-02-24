@@ -8,8 +8,6 @@ import { electionReducer } from "../features/elections/electionSlice";
 import { wardReducer } from "../features/wards/wardSlice";
 import { lgaReducer } from "../features/lgas/lgaSlice";
 import { pollingUnitReducer } from "../features/pollingUnits/pollingUnitSlice";
-import { presenceReducer } from "../features/presence/presenceSlice";
-import { reportReducer } from "../features/reports/reportSlice";
 import { resultSheetReducer } from "../features/resultSheets/resultSheetSlice";
 import { votingReducer } from "../features/voting/votingSlice";
 import { stateReducer } from "../features/states/stateSlice";
@@ -25,8 +23,6 @@ export const store = configureStore({
     lgas: lgaReducer,
     states: stateReducer,
     pollingUnits: pollingUnitReducer,
-    presence: presenceReducer,
-    reports: reportReducer,
     resultSheets: resultSheetReducer,
     voting: votingReducer,
     user: userReducer,

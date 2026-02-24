@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+# Environment files (secrets – API keys, URLs, etc.)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Build cache
+.vite
+.cache
+
+# Test coverage
+coverage
+.nyc_output
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
