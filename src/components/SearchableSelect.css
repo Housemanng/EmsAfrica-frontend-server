@@ -1,0 +1,122 @@
+.searchable-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: relative;
+  min-width: 0;
+}
+
+.searchable-select label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.searchable-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.875rem;
+  min-height: 38px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.searchable-select__trigger:hover:not(.searchable-select__trigger--disabled) {
+  border-color: #9ca3af;
+}
+
+.searchable-select__trigger--open {
+  border-color: #3b82f6;
+  outline: 1px solid #3b82f6;
+}
+
+.searchable-select__trigger--disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.searchable-select__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0;
+  min-width: 0;
+}
+
+.searchable-select__value {
+  flex: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.searchable-select__placeholder {
+  color: #9ca3af;
+}
+
+.searchable-select__chevron {
+  font-size: 0.65rem;
+  color: #6b7280;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.searchable-select__trigger--open .searchable-select__chevron {
+  transform: rotate(180deg);
+}
+
+.searchable-select__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  list-style: none;
+}
+
+.searchable-select__option {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.searchable-select__option:hover {
+  background: #f3f4f6;
+}
+
+.searchable-select__option--selected {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.searchable-select__option--empty {
+  color: #9ca3af;
+  cursor: default;
+}
+
+.searchable-select__required-fix {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}

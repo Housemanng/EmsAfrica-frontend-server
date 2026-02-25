@@ -34,13 +34,58 @@ export const selectLgaCollationOfficers = (organizationId: string) => (state: Ro
 export const selectLgaCollationOfficersLoading = (organizationId: string) => (state: RootState) =>
   state.user.loading[buildKey("user/getLgaCollationOfficersByOrganizationId", organizationId)] ?? false;
 
+export const selectUsersByStateId = (
+  organizationId: string,
+  stateId: string
+) => (state: RootState) =>
+  state.user.cache[
+    buildKey("user/getUsersByStateId", { organizationId, stateId })
+  ] as { users?: unknown[] } | undefined;
+export const selectUsersByStateIdLoading = (
+  organizationId: string,
+  stateId: string
+) => (state: RootState) =>
+  state.user.loading[
+    buildKey("user/getUsersByStateId", { organizationId, stateId })
+  ] ?? false;
+
+export const selectUsersByLgaId = (
+  organizationId: string,
+  lgaId: string
+) => (state: RootState) =>
+  state.user.cache[
+    buildKey("user/getUsersByLgaId", { organizationId, lgaId })
+  ] as { users?: unknown[] } | undefined;
+export const selectUsersByLgaIdLoading = (
+  organizationId: string,
+  lgaId: string
+) => (state: RootState) =>
+  state.user.loading[
+    buildKey("user/getUsersByLgaId", { organizationId, lgaId })
+  ] ?? false;
+
+export const selectUsersByWardId = (
+  organizationId: string,
+  wardId: string
+) => (state: RootState) =>
+  state.user.cache[
+    buildKey("user/getUsersByWardId", { organizationId, wardId })
+  ] as { users?: unknown[] } | undefined;
+export const selectUsersByWardIdLoading = (
+  organizationId: string,
+  wardId: string
+) => (state: RootState) =>
+  state.user.loading[
+    buildKey("user/getUsersByWardId", { organizationId, wardId })
+  ] ?? false;
+
 export const selectUsersByPollingUnitId = (
   organizationId: string,
   pollingUnitId: string
 ) => (state: RootState) =>
   state.user.cache[
     buildKey("user/getUsersByPollingUnitId", { organizationId, pollingUnitId })
-  ] as any[] | undefined;
+  ] as { users?: unknown[] } | undefined;
 export const selectUsersByPollingUnitIdLoading = (
   organizationId: string,
   pollingUnitId: string

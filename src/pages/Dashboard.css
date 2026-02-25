@@ -22,7 +22,7 @@
 .dash-page__title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #fafafa;
+  color: #000;
   margin: 0;
 }
 
@@ -127,14 +127,58 @@
   flex-shrink: 0;
 }
 
-/* Banner card */
+/* Banner card - same layout as admin dashboard */
 .dash-card--banner {
   background: #111827;
   border-color: #111827;
-  flex-direction: row;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.dash-card__banner-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-card--banner .dash-card__cta {
+  align-self: flex-start;
+}
+
+.dash-card__banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+}
+
+.dash-card__banner-title {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.dash-card__banner-meta {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8125rem;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.dash-card__cta--primary {
+  background: #f59e0b;
+  color: #000;
+}
+
+.dash-card__cta--primary:hover {
+  background: #d97706;
+  color: #000;
 }
 
 .dash-card--banner .dash-card__title {
@@ -221,6 +265,59 @@
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
+}
+
+/* Role filter cards above user table */
+.dash-role-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dash-role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.dash-role-card:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.dash-role-card--active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #f59e0b;
+}
+
+.dash-role-card__label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.dash-role-card--active .dash-role-card__label {
+  color: #92400e;
+}
+
+.dash-role-card__count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dash-role-card--active .dash-role-card__count {
+  color: #92400e;
 }
 
 /* Table section */
@@ -362,9 +459,692 @@
   color: #059669;
 }
 
+.dash-table__status--success {
+  background: #d1fae5;
+  color: #059669;
+}
 .dash-table__status--warning {
   background: #fef3c7;
   color: #d97706;
+}
+
+.dash-table__name-col {
+  min-width: 200px;
+}
+
+.dash-table__role-col {
+  min-width: 120px;
+}
+
+.dash-table__actions-col {
+  text-align: right;
+  padding-right: 1rem;
+}
+
+.dash-table th.dash-table__actions-col {
+  text-align: right;
+}
+
+.dash-table__actions-wrap {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+/* Modal */
+.dash-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.dash-modal {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  overflow-x: hidden;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  max-width: min(480px, calc(100vw - 2rem));
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.dash-modal--form-large {
+  max-width: min(720px, calc(100vw - 2rem));
+  width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-modal__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem;
+}
+
+.dash-modal__subtitle {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0 0 1rem;
+}
+
+.dash-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dash-modal__form--create-user {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.25rem;
+  min-width: 0;
+  width: 100%;
+  align-items: start;
+}
+
+.dash-modal__form--create-user .dash-modal__field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.dash-modal__form--create-user .dash-modal__field label {
+  flex-shrink: 0;
+  min-width: auto;
+}
+
+.dash-modal__form--create-user .dash-modal__field input,
+.dash-modal__form--create-user .dash-modal__field select,
+.dash-modal__form--create-user .dash-modal__field textarea {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dash-modal__form--create-user .dash-modal__actions {
+  grid-column: 1 / -1;
+  margin-top: 0.25rem;
+}
+
+.dash-modal__field--full {
+  grid-column: 1 / -1;
+}
+
+.dash-modal__form--create-user .dash-modal__field--full {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.dash-modal__form--create-user .dash-modal__field--full label {
+  min-width: auto;
+}
+
+/* SearchableSelect in modal - label above control */
+.dash-modal__form--create-user .searchable-select {
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.dash-modal__form--create-user .searchable-select label {
+  flex-shrink: 0;
+  min-width: auto;
+}
+
+.dash-modal__form--create-user .searchable-select .searchable-select__trigger {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dash-modal__section {
+  grid-column: 1 / -1;
+  margin: 1rem 0 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dash-modal__section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.dash-modal__section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.dash-modal__section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dash-modal__toggle-details {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dash-modal__toggle-details:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #9ca3af;
+}
+
+.dash-modal__toggle-details--on {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #3b82f6;
+}
+
+.dash-modal__toggle-details--on:hover {
+  background: #dbeafe;
+}
+
+/* Location cell: input + details in one grid column, details match input width.
+   Do NOT use overflow: hidden here - it clips the SearchableSelect dropdown. */
+.dash-modal__location-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dash-modal__location-cell .searchable-select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dash-modal__pu-assigned {
+  margin-top: 0;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.dash-modal__pu-assigned--inline {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.dash-modal__pu-assigned-text {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.dash-modal__pu-assigned-text--empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Assigned agent cards – full details with photo, name, phone, role */
+.dash-agent-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.dash-agent-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.dash-agent-card__photo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-agent-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dash-agent-card__initials {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.dash-agent-card__details {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dash-agent-card__name,
+.dash-agent-card__phone,
+.dash-agent-card__role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-agent-card__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dash-agent-card__phone {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.dash-agent-card__role {
+  font-size: 0.75rem;
+  color: #374151;
+  text-transform: capitalize;
+}
+
+.dash-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dash-modal__field label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dash-modal__field textarea {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 630px;
+  box-sizing: border-box;
+  font-family: inherit;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.15s, outline-color 0.15s;
+}
+.dash-modal__field input,
+.dash-modal__field select
+ {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  box-sizing: border-box;
+  font-family: inherit;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.15s, outline-color 0.15s;
+}
+
+.dash-modal__field input:hover,
+.dash-modal__field select:hover,
+.dash-modal__field textarea:hover {
+  border-color: #9ca3af;
+}
+
+.dash-modal__field input:focus,
+.dash-modal__field select:focus,
+.dash-modal__field textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.dash-modal__field input::placeholder,
+.dash-modal__field textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dash-modal__field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Date input – match Sex/LGA select style */
+.dash-modal__field input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  color-scheme: light;
+}
+
+/* Create User modal – photo upload */
+.dash-modal__photo-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dash-modal__photo-preview {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-modal__photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dash-modal__photo-placeholder {
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
+.dash-modal__photo-camera {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  cursor: pointer;
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 0.5rem;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.dash-modal__photo-camera:hover {
+  color: #374151;
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.dash-modal__photo-camera span {
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+.dash-modal__photo-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dash-modal__photo-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: #dc2626;
+  transition: color 0.2s, background 0.2s;
+}
+
+.dash-modal__photo-delete:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.dash-modal__view-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dash-modal__view-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.75rem;
+}
+
+.dash-modal__view-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.dash-modal__view-value {
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+.dash-modal__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* Create user modal – success state */
+.dash-modal__success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.dash-modal__success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-modal__success-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.dash-modal__success-text {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Create user modal – error warning box */
+.dash-modal__error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.dash-modal__error-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-modal__error-text {
+  font-size: 0.875rem;
+  color: #b91c1c;
+  flex: 1;
+}
+
+.dash-table-section__error {
+  color: #dc2626;
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+/* Modal responsive - create user form: tablet and smaller */
+@media (max-width: 768px) {
+  .dash-modal__form--create-user {
+    grid-template-columns: 1fr;
+    gap: 0.75rem 1rem;
+  }
+
+  .dash-modal__form--create-user .dash-modal__field {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dash-modal__form--create-user .dash-modal__field label {
+    min-width: auto;
+  }
+
+  .dash-modal__form--create-user .searchable-select {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dash-modal__form--create-user .searchable-select label {
+    min-width: auto;
+  }
+
+  .dash-modal__form--create-user .searchable-select .searchable-select__trigger {
+    width: 100%;
+  }
+}
+
+/* Modal responsive - create user form: mobile */
+@media (max-width: 640px) {
+  .dash-modal-backdrop {
+    padding: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .dash-modal--form-large {
+    max-width: 100%;
+    max-height: calc(100vh - 1rem);
+  }
+
+  .dash-modal__form--create-user {
+    grid-template-columns: 1fr;
+    gap: 0.75rem 1rem;
+  }
+
+  .dash-modal__form--create-user .dash-modal__field {
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  .dash-modal__form--create-user .dash-modal__field label {
+    min-width: auto;
+  }
+
+  .dash-modal__form--create-user .dash-modal__field input,
+  .dash-modal__form--create-user .dash-modal__field select,
+  .dash-modal__form--create-user .dash-modal__field textarea {
+    width: 100%;
+  }
+
+  .dash-modal__form--create-user .searchable-select {
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  .dash-modal__form--create-user .searchable-select label {
+    min-width: auto;
+  }
+
+  .dash-modal__form--create-user .searchable-select .searchable-select__trigger {
+    width: 100%;
+  }
 }
 
 /* Responsive */
@@ -376,7 +1156,10 @@
   .dash-card--banner {
     flex-direction: column;
     align-items: stretch;
-    text-align: center;
+  }
+
+  .dash-card--banner .dash-card__cta {
+    align-self: stretch;
   }
 
   .dash-features {

@@ -11,6 +11,8 @@ import { pollingUnitReducer } from "../features/pollingUnits/pollingUnitSlice";
 import { resultSheetReducer } from "../features/resultSheets/resultSheetSlice";
 import { votingReducer } from "../features/voting/votingSlice";
 import { stateReducer } from "../features/states/stateSlice";
+import { presenceReducer } from "../features/presence/presenceSlice";
+import { reportReducer } from "../features/reports/reportSlice";
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +28,8 @@ export const store = configureStore({
     resultSheets: resultSheetReducer,
     voting: votingReducer,
     user: userReducer,
+    presence: presenceReducer,
+    reports: reportReducer,
   },
 });
 

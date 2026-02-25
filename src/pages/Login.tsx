@@ -1,15 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import api from "../config/apiConfig";
 import { loginUser } from "../features/auth/authApi";
 import { setCredentials } from "../features/auth/authSlice";
 import "./Login.css";
+
+interface TenantContext {
+  organization?: { _id: string; name: string; code?: string };
+  state?: { _id: string; name: string; code?: string } | null;
+}
 
 export default function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
+
+  useEffect(() => {
+    api
+      .get("/tenant-context")
+      .then((res) => {
+        const data = res.data;
+        if (data?.tenantContext?.organization || data?.organization) {
+          setTenantContext({
+            organization: data.tenantContext?.organization ?? data.organization,
+            state: data.tenantContext?.state ?? data.state ?? null,
+          });
+        } else if (data?.state) {
+          setTenantContext({ state: data.state });
+        }
+      })
+      .catch(() => {});
+  }, []);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -56,6 +80,14 @@ export default function Login() {
 
       <div className="login-page__container">
         <div className="login-page__card">
+          {tenantContext?.organization?.name && (
+            <div className="login-page__org-banner">
+              {tenantContext.organization.name}
+              {tenantContext.state?.name && (
+                <span className="login-page__org-state"> — {tenantContext.state.name}</span>
+              )}
+            </div>
+          )}
           <div className="login-page__title-wrap">
             <h1 className="login-page__logo">EMS</h1>
             <p className="login-page__subtitle">Electoral Monitoring System</p>

@@ -53,6 +53,23 @@
   padding: clamp(1rem, 4vh, 2rem);
 }
 
+.login-page__org-banner {
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 clamp(0.75rem, 2vh, 1rem) 0;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 0.5rem;
+  color: #fbbf24;
+  font-size: clamp(0.875rem, 2vh, 1rem);
+  font-weight: 600;
+}
+
+.login-page__org-state {
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
 .login-page__title-wrap {
   text-align: center;
   margin-bottom: clamp(0.75rem, 2vh, 1.5rem);

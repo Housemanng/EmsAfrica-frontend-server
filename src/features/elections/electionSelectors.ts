@@ -38,6 +38,13 @@ export const selectElectionsByOrganizationIdLoading = (
   const arg = query ? { organizationId, query } : { organizationId };
   return state.elections.loading[buildKey("elections/getElectionsByOrganizationId", arg)] ?? false;
 };
+export const selectElectionsByOrganizationIdError = (
+  organizationId: string,
+  query?: { state?: string; status?: string; group?: string }
+) => (state: RootState) => {
+  const arg = query ? { organizationId, query } : { organizationId };
+  return state.elections.error[buildKey("elections/getElectionsByOrganizationId", arg)] as string | null | undefined;
+};
 
 export const selectElectionsByLGAId = (
   lgaId: string,

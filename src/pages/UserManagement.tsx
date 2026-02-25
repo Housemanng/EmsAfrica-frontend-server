@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import Swal from "sweetalert2";
 import type { AppDispatch, RootState } from "../app/store";
 import {
   getStatesByOrganizationId,
   selectStatesByOrganizationId,
+  selectStatesByOrganizationIdLoading,
+  selectStatesByOrganizationIdError,
 } from "../features/states";
 import { getLGAsByState, selectLGAsByState } from "../features/lgas";
 import { getWardsByLGA, selectWardsByLGA } from "../features/wards";
@@ -19,10 +21,14 @@ import {
   getUsersByWardId,
   getUsersByPollingUnitId,
   signupUserByOrganizationId,
+  updateUserByOrganizationId,
+  changeUserPasswordByOrganizationId,
+  deleteUserByOrganizationId,
 } from "../features/user";
 import { getUserRoles as fetchUserRoles } from "../features/auth/authApi";
 import {
   selectUsersByOrganizationId,
+  selectUsersByOrganizationIdLoading,
   selectUsersByStateId,
   selectUsersByStateIdLoading,
   selectUsersByLgaId,
@@ -32,6 +38,7 @@ import {
   selectUsersByPollingUnitId,
   selectUsersByPollingUnitIdLoading,
 } from "../features/user/userSelectors";
+import UserDetailsModal from "../components/UserDetailsModal";
 import SearchableSelect from "../components/SearchableSelect";
 import "./Dashboard.css";
 
@@ -41,6 +48,9 @@ const IconChevronCard = () => (
 );
 const IconChevronFeature = () => (
   <svg className="dash-feature__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+);
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
 );
 const IconFile = () => (
   <svg className="dash-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
@@ -84,6 +94,9 @@ interface OrgUser {
   createdAt?: string;
   createdBy?: { firstName?: string; lastName?: string } | string;
 }
+
+const canEditUsers = (role: string | null) =>
+  role === "superadmin" || role === "executive";
 
 /** Org-level roles: no state/lga/ward/pollingUnit required */
 const ORG_LEVEL_ROLES = ["regular", "executive", "superadmin"];
@@ -137,8 +150,27 @@ const AssignedAgentCard = ({ agent }: { agent: AssignedAgent }) => (
   </div>
 );
 
-export default function Dashboard() {
+export default function UserManagement() {
   const dispatch = useDispatch<AppDispatch>();
+  const [search, setSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
+  const [editingUser, setEditingUser] = useState<OrgUser | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    sex: "male" as "male" | "female",
+    dateOfBirth: "",
+    description: "",
+  });
+  const [editError, setEditError] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [changingPasswordUser, setChangingPasswordUser] = useState<OrgUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [changePasswordError, setChangePasswordError] = useState("");
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [createUserForm, setCreateUserForm] = useState({
     role: "executive",
@@ -161,14 +193,21 @@ export default function Dashboard() {
   const [createUserRoles, setCreateUserRoles] = useState<Array<{ value: string; label: string }>>(DEFAULT_CREATE_ROLES);
   const [showAssignedDetails, setShowAssignedDetails] = useState(true);
   const [createUserSuccess, setCreateUserSuccess] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
 
   const organizationName = useSelector((state: RootState) => state.auth.user?.organization?.name);
   const stateName = useSelector((state: RootState) => state.auth.user?.state?.name);
   const organizationId = useSelector((state: RootState) => state.auth.user?.organization?._id ?? state.auth.user?.organization?.id);
+  const role = useSelector((state: RootState) => state.auth.role);
   const orgStates = useSelector(selectStatesByOrganizationId(organizationId ?? ""));
+  const orgStatesLoading = useSelector(selectStatesByOrganizationIdLoading(organizationId ?? ""));
+  const orgStatesError = useSelector(selectStatesByOrganizationIdError(organizationId ?? ""));
   const orgUsers = useSelector((state: RootState) =>
     selectUsersByOrganizationId(organizationId ?? "")(state)
   ) as OrgUser[] | undefined;
+  const orgUsersLoading = useSelector((state: RootState) =>
+    selectUsersByOrganizationIdLoading(organizationId ?? "")(state)
+  );
 
   useEffect(() => {
     if (organizationId) {
@@ -296,6 +335,36 @@ export default function Dashboard() {
     if (organizationId) dispatch(getUsersByOrganizationId(organizationId));
   };
 
+  const filteredStates = (orgStates ?? []).filter(
+    (s: { name?: string; code?: string }) =>
+      (s.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (s.code ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const roleCounts = (orgUsers ?? []).reduce(
+    (acc: Record<string, number>, u: OrgUser) => {
+      const r = u.role ?? "unknown";
+      acc[r] = (acc[r] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
+  const roleEntries = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]);
+
+  const filteredUsers = (orgUsers ?? []).filter(
+    (u: OrgUser) => {
+      const name = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ");
+      const email = u.email ?? "";
+      const q = userSearch.toLowerCase();
+      const matchesSearch = name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
+      const matchesRole = !roleFilter || (u.role ?? "") === roleFilter;
+      return matchesSearch && matchesRole;
+    }
+  );
+
+  const handleViewUser = (u: OrgUser) => setViewingUser(u);
+  const handleCloseViewUser = () => setViewingUser(null);
+
   const handleOpenCreateUser = async () => {
     setCreateUserForm({
       role: "executive",
@@ -409,6 +478,155 @@ export default function Dashboard() {
     }
   };
 
+  const handleEditUser = (u: OrgUser) => {
+    setEditingUser(u);
+    setEditForm({
+      firstName: u.firstName ?? "",
+      lastName: u.lastName ?? "",
+      email: u.email ?? "",
+      phoneNumber: u.phoneNumber ?? "",
+      sex: (u.sex === "female" ? "female" : "male") as "male" | "female",
+      dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().split("T")[0] : "",
+      description: u.description ?? "",
+    });
+    setEditError("");
+  };
+
+  const handleCloseEditUser = () => {
+    setEditingUser(null);
+    setEditError("");
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId || !editingUser) return;
+    setEditError("");
+    setEditLoading(true);
+    try {
+      await dispatch(
+        updateUserByOrganizationId({
+          organizationId,
+          id: editingUser._id,
+          body: {
+            firstName: editForm.firstName.trim(),
+            lastName: editForm.lastName.trim(),
+            email: editForm.email.trim(),
+            phoneNumber: editForm.phoneNumber.trim(),
+            sex: editForm.sex,
+            dateOfBirth: editForm.dateOfBirth || undefined,
+            description: editForm.description.trim() || undefined,
+          },
+        })
+      ).unwrap();
+      handleCloseEditUser();
+      refetchUsers();
+    } catch (err: unknown) {
+      setEditError((err as { message?: string })?.message ?? "Failed to update user");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleChangePassword = (u: OrgUser) => {
+    setChangingPasswordUser(u);
+    setNewPassword("");
+    setChangePasswordError("");
+  };
+
+  const handleCloseChangePassword = () => {
+    setChangingPasswordUser(null);
+    setNewPassword("");
+    setChangePasswordError("");
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId || !changingPasswordUser || !newPassword || newPassword.length < 6) return;
+    setChangePasswordError("");
+    setChangePasswordLoading(true);
+    try {
+      await dispatch(
+        changeUserPasswordByOrganizationId({
+          organizationId,
+          id: changingPasswordUser._id,
+          newPassword,
+        })
+      ).unwrap();
+      handleCloseChangePassword();
+    } catch (err: unknown) {
+      setChangePasswordError((err as { message?: string })?.message ?? "Failed to change password");
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (u: OrgUser) => {
+    const name = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ");
+    const result = await Swal.fire({
+      title: "Delete User",
+      html: `Are you sure you want to delete <strong>"${name}"</strong>? This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
+    });
+    if (!result.isConfirmed || !organizationId) return;
+    try {
+      await dispatch(
+        deleteUserByOrganizationId({ organizationId, id: u._id })
+      ).unwrap();
+      Swal.fire({ icon: "success", title: "Deleted", text: "User deleted successfully." });
+      refetchUsers();
+    } catch (err: unknown) {
+      Swal.fire({
+        icon: "error",
+        title: "Delete failed",
+        text: (err as { message?: string })?.message ?? "Failed to delete user",
+      });
+    }
+  };
+
+  const handleSuspendUser = async (u: OrgUser) => {
+    const suspended = !u.isSuspended;
+    const name = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ");
+    const result = await Swal.fire({
+      title: suspended ? "Suspend User" : "Unsuspend User",
+      html: suspended
+        ? `Suspend <strong>"${name}"</strong>? This user will not be able to sign in until unsuspended.`
+        : `Unsuspend <strong>"${name}"</strong>? This user will be able to sign in again.`,
+      icon: suspended ? "warning" : "question",
+      showCancelButton: true,
+      confirmButtonColor: suspended ? "#d97706" : "#059669",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: suspended ? "Yes, suspend" : "Yes, unsuspend",
+      cancelButtonText: "Cancel",
+    });
+    if (!result.isConfirmed || !organizationId) return;
+    try {
+      await dispatch(
+        updateUserByOrganizationId({
+          organizationId,
+          id: u._id,
+          body: { isSuspended: suspended },
+        })
+      ).unwrap();
+      Swal.fire({
+        icon: "success",
+        title: suspended ? "Suspended" : "Unsuspended",
+        text: `User ${suspended ? "suspended" : "unsuspended"} successfully.`,
+      });
+      refetchUsers();
+    } catch (err: unknown) {
+      Swal.fire({
+        icon: "error",
+        title: suspended ? "Suspend failed" : "Unsuspend failed",
+        text: (err as { message?: string })?.message ?? "Failed",
+      });
+    }
+  };
+
   return (
     <div className="dash-page">
       <div className="dash-page__top">
@@ -483,22 +701,22 @@ export default function Dashboard() {
       </div>
 
       <div className="dash-features">
-        <Link to="/dashboard/user-management" className="dash-feature">
+        <a href="#users-table" className="dash-feature">
           <div className="dash-feature__row">
             <IconUsers />
             <IconChevronFeature />
           </div>
           <h3 className="dash-feature__title">Agents</h3>
           <p className="dash-feature__desc">{(orgUsers ?? []).length} Agent{(orgUsers ?? []).length !== 1 ? "s" : ""} in this organization</p>
-        </Link>
-        <div className="dash-feature">
+        </a>
+        <a href="#states-table" className="dash-feature">
           <div className="dash-feature__row">
             <IconMapPin />
             <IconChevronFeature />
           </div>
           <h3 className="dash-feature__title">States</h3>
-          <p className="dash-feature__desc">{(orgStates ?? []).length} state{(orgStates ?? []).length !== 1 ? "s" : ""} under this organization</p>
-        </div>
+          <p className="dash-feature__desc">View states under this organization</p>
+        </a>
         <a href="#reports" className="dash-feature">
           <div className="dash-feature__row">
             <IconFile />
@@ -516,6 +734,227 @@ export default function Dashboard() {
           <p className="dash-feature__desc">Collate and manage result sheets</p>
         </a>
       </div>
+
+      {/* Role filter cards - above user table */}
+      {roleEntries.length > 0 && (
+        <div className="dash-role-cards">
+          <button
+            type="button"
+            className={`dash-role-card ${roleFilter === null ? "dash-role-card--active" : ""}`}
+            onClick={() => setRoleFilter(null)}
+          >
+            <span className="dash-role-card__label">All</span>
+            <span className="dash-role-card__count">{orgUsers?.length ?? 0}</span>
+          </button>
+          {roleEntries.map(([r, count]) => (
+            <button
+              key={r}
+              type="button"
+              className={`dash-role-card ${roleFilter === r ? "dash-role-card--active" : ""}`}
+              onClick={() => setRoleFilter(roleFilter === r ? null : r)}
+            >
+              <span className="dash-role-card__label">{formatRoleLabel(r)}</span>
+              <span className="dash-role-card__count">{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Users table - ABOVE States */}
+      <section className="dash-table-section" id="users-table">
+        <div className="dash-table-section__head">
+          <h2 className="dash-table-section__title">
+            Agents ({orgUsers?.length ?? 0})
+          </h2>
+          <div className="dash-table-section__tools">
+            <div className="dash-table-section__search">
+              <IconSearch />
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {orgUsersLoading && (orgUsers ?? []).length === 0 ? (
+          <p className="dash-table-section__meta">Loading Agents...</p>
+        ) : (
+          <div className="dash-table-wrapper">
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th className="dash-table__name-col">Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th className="dash-table__role-col">Role</th>
+                  <th>Created</th>
+                  <th className="dash-table__actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="dash-table__empty">
+                      No Agent in this organization.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((u) => (
+                    <tr key={u._id}>
+                      <td className="dash-table__name-col">
+                        <div className="dash-table__product">
+                          <div className="dash-table__thumb">
+                            {(u.firstName ?? "?").slice(0, 1).toUpperCase()}
+                          </div>
+                          <span>
+                            {[u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ")}
+                            {u.isSuspended && (
+                              <span className="dash-table__status dash-table__status--warning" style={{ marginLeft: "0.5rem" }}>
+                                Suspended
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td>{u.email ?? "—"}</td>
+                      <td>{u.phoneNumber ?? "—"}</td>
+                      <td className="dash-table__role-col">
+                        <span className="dash-table__status">
+                          {(u.role ?? "").replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td>
+                        {u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "—"}
+                      </td>
+                      <td className="dash-table__actions-col">
+                        <div className="dash-table__actions-wrap">
+                          <button
+                            type="button"
+                            className="dash-page__btn dash-page__btn--outline"
+                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}
+                            onClick={() => handleViewUser(u)}
+                          >
+                            View
+                          </button>
+                          {canEditUsers(role) && (
+                            <>
+                              <button
+                                type="button"
+                                className="dash-page__btn dash-page__btn--outline"
+                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}
+                                onClick={() => handleEditUser(u)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="dash-page__btn dash-page__btn--outline"
+                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#059669" }}
+                                onClick={() => handleChangePassword(u)}
+                              >
+                                Change password
+                              </button>
+                              <button
+                                type="button"
+                                className="dash-page__btn dash-page__btn--outline"
+                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: u.isSuspended ? "#059669" : "#d97706" }}
+                                onClick={() => handleSuspendUser(u)}
+                              >
+                                {u.isSuspended ? "Unsuspend" : "Suspend"}
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            className="dash-page__btn"
+                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", background: "#dc2626", color: "#fff" }}
+                            onClick={() => handleDeleteUser(u)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* States table */}
+      <section className="dash-table-section" id="states-table" style={{ marginTop: "2rem" }}>
+        <div className="dash-table-section__head">
+          <h2 className="dash-table-section__title">
+            States under {organizationName ?? "Organization"}
+          </h2>
+          <div className="dash-table-section__tools">
+            <div className="dash-table-section__search">
+              <IconSearch />
+              <input
+                type="text"
+                placeholder="Search states..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {orgStatesLoading ? (
+          <p className="dash-table-section__meta">Loading states...</p>
+        ) : orgStatesError ? (
+          <p className="dash-page__error">{orgStatesError}</p>
+        ) : (
+          <div className="dash-table-wrapper">
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th>State name</th>
+                  <th>Code</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStates.map((s: { _id?: string; name?: string; code?: string }) => (
+                  <tr key={s._id ?? s.name ?? s.code ?? ""}>
+                    <td>
+                      <div className="dash-table__product">
+                        <div className="dash-table__thumb">
+                          {(s.name ?? "?").slice(0, 2).toUpperCase()}
+                        </div>
+                        {s.name ?? "—"}
+                      </div>
+                    </td>
+                    <td>{s.code ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredStates.length === 0 && !orgStatesLoading && (
+              <p className="dash-table-section__empty">No states found for this organization.</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* View modal - same format as sidebar UserDetailsModal */}
+      <UserDetailsModal
+        isOpen={!!viewingUser}
+        onClose={handleCloseViewUser}
+        user={viewingUser}
+        showEditButton={canEditUsers(role ?? "")}
+        onEdit={viewingUser ? () => { handleCloseViewUser(); handleEditUser(viewingUser); } : undefined}
+      />
 
       {/* Create Party Agent modal - same as admin OrganizationDetail */}
       {showCreateUserModal && (
@@ -894,6 +1333,138 @@ export default function Dashboard() {
             </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editingUser && (
+        <div
+          className="dash-modal-backdrop"
+          onClick={handleCloseEditUser}
+          onKeyDown={(e) => e.key === "Escape" && handleCloseEditUser()}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="dash-modal dash-modal--form-large" onClick={(e) => e.stopPropagation()}>
+            <h3 className="dash-modal__title">Edit User</h3>
+            <p className="dash-modal__subtitle">
+              Update details for {[editingUser.firstName, editingUser.lastName].filter(Boolean).join(" ")}.
+            </p>
+            <form onSubmit={handleEditSubmit} className="dash-modal__form dash-modal__form--create-user">
+              <div className="dash-modal__field">
+                <label>First name</label>
+                <input
+                  type="text"
+                  value={editForm.firstName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="dash-modal__field">
+                <label>Last name</label>
+                <input
+                  type="text"
+                  value={editForm.lastName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="dash-modal__field">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="dash-modal__field">
+                <label>Phone number</label>
+                <input
+                  type="text"
+                  value={editForm.phoneNumber}
+                  onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                />
+              </div>
+              <SearchableSelect
+                id="edit-sex"
+                label="Sex"
+                value={editForm.sex}
+                onChange={(val) => setEditForm((f) => ({ ...f, sex: val as "male" | "female" }))}
+                options={[
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                ]}
+                placeholder="Search or select sex..."
+              />
+              <div className="dash-modal__field">
+                <label>Date of birth</label>
+                <input
+                  type="date"
+                  value={editForm.dateOfBirth}
+                  onChange={(e) => setEditForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
+                  max={new Date().toISOString().split("T")[0]}
+                />
+              </div>
+              <div className="dash-modal__field dash-modal__field--full">
+                <label>Description (optional)</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+              {editError && <p className="dash-table-section__error">{editError}</p>}
+              <div className="dash-modal__actions">
+                <button type="button" className="dash-page__btn dash-page__btn--outline" onClick={handleCloseEditUser}>
+                  Cancel
+                </button>
+                <button type="submit" className="dash-page__btn dash-page__btn--solid" disabled={editLoading}>
+                  {editLoading ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change password modal */}
+      {changingPasswordUser && (
+        <div
+          className="dash-modal-backdrop"
+          onClick={handleCloseChangePassword}
+          onKeyDown={(e) => e.key === "Escape" && handleCloseChangePassword()}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="dash-modal__title">Change Password</h3>
+            <p className="dash-modal__subtitle">
+              Set a new password for {[changingPasswordUser.firstName, changingPasswordUser.lastName].filter(Boolean).join(" ")}.
+            </p>
+            <form onSubmit={handleChangePasswordSubmit} className="dash-modal__form">
+              <div className="dash-modal__field">
+                <label>New password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  required
+                  minLength={6}
+                />
+              </div>
+              {changePasswordError && <p className="dash-table-section__error">{changePasswordError}</p>}
+              <div className="dash-modal__actions">
+                <button type="button" className="dash-page__btn dash-page__btn--outline" onClick={handleCloseChangePassword}>
+                  Cancel
+                </button>
+                <button type="submit" className="dash-page__btn dash-page__btn--solid" disabled={changePasswordLoading}>
+                  {changePasswordLoading ? "Updating..." : "Update password"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

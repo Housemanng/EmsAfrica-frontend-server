@@ -83,6 +83,75 @@ export const getLgaCollationOfficersByOrganizationId = createAsyncThunk(
   }
 );
 
+/** GET /api/users/organization/:organizationId/state/:stateId */
+export const getUsersByStateId = createAsyncThunk(
+  "user/getUsersByStateId",
+  async (
+    params: { organizationId: string; stateId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { organizationId, stateId } = params;
+      const res = await api.get(
+        `/users/organization/${organizationId}/state/${stateId}`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to get users by state"
+      );
+    }
+  }
+);
+
+/** GET /api/users/organization/:organizationId/lga/:lgaId */
+export const getUsersByLgaId = createAsyncThunk(
+  "user/getUsersByLgaId",
+  async (
+    params: { organizationId: string; lgaId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { organizationId, lgaId } = params;
+      const res = await api.get(
+        `/users/organization/${organizationId}/lga/${lgaId}`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to get users by LGA"
+      );
+    }
+  }
+);
+
+/** GET /api/users/organization/:organizationId/ward/:wardId */
+export const getUsersByWardId = createAsyncThunk(
+  "user/getUsersByWardId",
+  async (
+    params: { organizationId: string; wardId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { organizationId, wardId } = params;
+      const res = await api.get(
+        `/users/organization/${organizationId}/ward/${wardId}`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to get users by ward"
+      );
+    }
+  }
+);
+
 /** GET /api/users/organization/:organizationId/polling-unit/:pollingUnitId */
 export const getUsersByPollingUnitId = createAsyncThunk(
   "user/getUsersByPollingUnitId",
@@ -106,7 +175,48 @@ export const getUsersByPollingUnitId = createAsyncThunk(
 );
 
 // ─── POST ────────────────────────────────────────────────────────────────────
-/** Create user under organization. Body: firstName, lastName, email, phoneNumber, sex, dateOfBirth, password (required); role?, middleName?, state?, lga?, ward?, pollingUnit?, photo? */
+/** POST /api/auth/signup/:organizationId – org staff (regular/executive/superadmin) create user in their org */
+export const signupUserByOrganizationId = createAsyncThunk(
+  "user/signupUserByOrganizationId",
+  async (
+    params: {
+      organizationId: string;
+      body: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phoneNumber: string;
+        sex: string;
+        dateOfBirth: string;
+        password: string;
+        role?: string;
+        middleName?: string;
+        photo?: string;
+        description?: string;
+        state?: string;
+        lga?: string;
+        ward?: string;
+        pollingUnit?: string;
+      };
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { organizationId, body } = params;
+      const res = await api.post(`/auth/signup/${organizationId}`, body, {
+        headers: getAuthHeaders(getState),
+      });
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to create user"
+      );
+    }
+  }
+);
+
+/** Create user under organization (platform admin only). Body: firstName, lastName, email, phoneNumber, sex, dateOfBirth, password (required); role?, middleName?, state?, lga?, ward?, pollingUnit?, photo? */
 export const createUserByOrganizationId = createAsyncThunk(
   "user/createUserByOrganizationId",
   async (
@@ -157,6 +267,64 @@ export const changePassword = createAsyncThunk(
       const res = await api.put("/users/change-password", body, {
         headers: getAuthHeaders(getState),
       });
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to change password"
+      );
+    }
+  }
+);
+
+/** PUT /api/users/organization/:organizationId/:id – update user (superadmin, executive) */
+export const updateUserByOrganizationId = createAsyncThunk(
+  "user/updateUserByOrganizationId",
+  async (
+    params: {
+      organizationId: string;
+      id: string;
+      body: {
+        firstName?: string;
+        lastName?: string;
+        middleName?: string;
+        email?: string;
+        phoneNumber?: string;
+        sex?: string;
+        dateOfBirth?: string;
+        description?: string;
+        isSuspended?: boolean;
+      };
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { organizationId, id, body } = params;
+      const res = await api.put(`/users/organization/${organizationId}/${id}`, body, {
+        headers: getAuthHeaders(getState),
+      });
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to update user"
+      );
+    }
+  }
+);
+
+/** PUT /api/users/organization/:organizationId/:id/password – set user password (superadmin, executive) */
+export const changeUserPasswordByOrganizationId = createAsyncThunk(
+  "user/changeUserPasswordByOrganizationId",
+  async (
+    params: { organizationId: string; id: string; newPassword: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { organizationId, id, newPassword } = params;
+      const res = await api.put(
+        `/users/organization/${organizationId}/${id}/password`,
+        { newPassword },
+        { headers: getAuthHeaders(getState) }
+      );
       return res.data;
     } catch (e: any) {
       return rejectWithValue(

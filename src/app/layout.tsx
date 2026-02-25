@@ -48,6 +48,14 @@ const IconFile = () => (
     <path d="M16 17H8" />
   </svg>
 );
+const IconCalendar = () => (
+  <svg className="dash-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
 const IconCheck = () => (
   <svg
     className="dash-sidebar__icon"
@@ -231,6 +239,22 @@ export default function Layout() {
               {location.pathname === "/dashboard" && <IconChevronRight />}
             </Link>
             <Link
+              to="/dashboard/user-management"
+              className={`dash-sidebar__link ${location.pathname === "/dashboard/user-management" ? "dash-sidebar__link--active" : ""}`}
+              onClick={closeSidebar}
+            >
+              <IconUsers /> Agent Management
+              {location.pathname === "/dashboard/user-management" && <IconChevronRight />}
+            </Link>
+            <Link
+              to="/elections"
+              className={`dash-sidebar__link ${location.pathname === "/elections" ? "dash-sidebar__link--active" : ""}`}
+              onClick={closeSidebar}
+            >
+              <IconCalendar /> Elections
+              {location.pathname === "/elections" && <IconChevronRight />}
+            </Link>
+            <Link
               to="/dashboard"
               className="dash-sidebar__link"
               onClick={closeSidebar}
@@ -313,13 +337,6 @@ export default function Layout() {
               </svg>
               Logout
             </button>
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconUsers /> User Management
-            </Link>
             <Link
               to="/dashboard"
               className="dash-sidebar__link"

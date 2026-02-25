@@ -4,13 +4,19 @@ import {
   getUserById,
   getUsersByOrganizationId,
   getLgaCollationOfficersByOrganizationId,
+  getUsersByStateId,
+  getUsersByLgaId,
+  getUsersByWardId,
   getUsersByPollingUnitId,
+  signupUserByOrganizationId,
   createUserByOrganizationId,
   changePassword,
   blockUserById,
   unblockUserById,
   deleteUserById,
   deleteUserByOrganizationId,
+  updateUserByOrganizationId,
+  changeUserPasswordByOrganizationId,
 } from "./userApi";
 
 const cacheKey = (action: { type: string; meta?: { arg?: unknown } }) => {
@@ -36,13 +42,19 @@ const allThunks = [
   getUserById,
   getUsersByOrganizationId,
   getLgaCollationOfficersByOrganizationId,
+  getUsersByStateId,
+  getUsersByLgaId,
+  getUsersByWardId,
   getUsersByPollingUnitId,
+  signupUserByOrganizationId,
   createUserByOrganizationId,
   changePassword,
   blockUserById,
   unblockUserById,
   deleteUserById,
   deleteUserByOrganizationId,
+  updateUserByOrganizationId,
+  changeUserPasswordByOrganizationId,
 ];
 
 const pendingMatcher = isAnyOf(...allThunks.map((t) => t.pending));
