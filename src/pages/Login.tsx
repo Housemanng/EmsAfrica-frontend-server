@@ -9,6 +9,7 @@ import "./Login.css";
 interface TenantContext {
   organization?: { _id: string; name: string; code?: string };
   state?: { _id: string; name: string; code?: string } | null;
+  party?: { name: string; acronym: string; logo?: string; color?: string } | null;
 }
 
 export default function Login() {
@@ -98,10 +99,26 @@ export default function Login() {
         <div className="login-page__card">
           {tenantContext?.organization?.name && (
             <div className="login-page__org-banner">
-              {tenantContext.organization.name}
-              {tenantContext.state?.name && (
-                <span className="login-page__org-state"> — {tenantContext.state.name}</span>
-              )}
+              {tenantContext.party?.logo ? (
+                <img
+                  src={tenantContext.party.logo}
+                  alt={tenantContext.party.acronym}
+                  className="login-page__org-logo"
+                />
+              ) : tenantContext.party ? (
+                <div
+                  className="login-page__org-logo-placeholder"
+                  style={{ background: tenantContext.party.color ?? "#374151" }}
+                >
+                  {tenantContext.party.acronym?.slice(0, 3) ?? "ORG"}
+                </div>
+              ) : null}
+              <span>
+                {tenantContext.organization.name}
+                {tenantContext.state?.name && (
+                  <span className="login-page__org-state"> — {tenantContext.state.name}</span>
+                )}
+              </span>
             </div>
           )}
           <div className="login-page__title-wrap">
