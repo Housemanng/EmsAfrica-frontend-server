@@ -42,8 +42,16 @@
   max-width: 28rem;
 }
 
-.login-page__org-logo-top {
+.login-page__org-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.login-page__org-logo-top {
   flex-shrink: 0;
 }
 
@@ -55,6 +63,10 @@
 
 .login-page__org-logo-top .login-page__org-logo-placeholder {
   font-size: 0.9rem;
+}
+
+.login-page__org-top .login-page__org-banner {
+  margin: 0;
 }
 
 .login-page__card {

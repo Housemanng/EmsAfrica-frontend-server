@@ -36,6 +36,7 @@ export default function Login() {
           setTenantContext({
             organization: data.tenantContext?.organization ?? data.organization,
             state: data.tenantContext?.state ?? data.state ?? null,
+            party: data.party ?? data.tenantContext?.party ?? null,
           });
         } else if (data?.state) {
           setSuspendedOrg(null);
@@ -96,33 +97,35 @@ export default function Login() {
       <div className="login-page__grid" aria-hidden />
 
       <div className="login-page__container">
-        {tenantContext?.organization?.name && (tenantContext.party?.logo || tenantContext.party) && (
-          <div className="login-page__org-logo-top">
-            {tenantContext.party?.logo ? (
-              <img
-                src={tenantContext.party.logo}
-                alt={tenantContext.party.acronym}
-                className="login-page__org-logo"
-              />
-            ) : (
-              <div
-                className="login-page__org-logo-placeholder"
-                style={{ background: tenantContext.party?.color ?? "#374151" }}
-              >
-                {tenantContext.party?.acronym?.slice(0, 3) ?? "ORG"}
+        {tenantContext?.organization?.name && (
+          <div className="login-page__org-top">
+            {(tenantContext.party?.logo || tenantContext.party) && (
+              <div className="login-page__org-logo-top">
+                {tenantContext.party?.logo ? (
+                  <img
+                    src={tenantContext.party.logo}
+                    alt={tenantContext.party.acronym}
+                    className="login-page__org-logo"
+                  />
+                ) : (
+                  <div
+                    className="login-page__org-logo-placeholder"
+                    style={{ background: tenantContext.party?.color ?? "#374151" }}
+                  >
+                    {tenantContext.party?.acronym?.slice(0, 3) ?? "ORG"}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
-        <div className="login-page__card">
-          {tenantContext?.organization?.name && (
             <div className="login-page__org-banner">
               {tenantContext.organization.name}
               {tenantContext.state?.name && (
                 <span className="login-page__org-state"> — {tenantContext.state.name}</span>
               )}
             </div>
-          )}
+          </div>
+        )}
+        <div className="login-page__card">
           <div className="login-page__title-wrap">
             <h1 className="login-page__logo">EMS</h1>
             <p className="login-page__subtitle">Electoral Monitoring System</p>
