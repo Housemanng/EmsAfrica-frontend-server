@@ -126,9 +126,14 @@ export default function Login() {
           </div>
         )}
         <div className="login-page__card">
-          <div className="login-page__title-wrap">
-            <h1 className="login-page__logo">EMS</h1>
+        <div className="login-page__title-wrap">
+           
             <p className="login-page__subtitle">Electoral Monitoring System</p>
+          </div>
+          <div className="login-page__title-wrap">
+          <p className="login-page__subtitle">By</p>
+            <h1 className="login-page__logo">EMSAFRICA</h1>
+
           </div>
 
           <h2 className="login-page__heading">Sign in</h2>
