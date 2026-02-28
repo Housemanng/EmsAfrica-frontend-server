@@ -72,12 +72,12 @@ export default function Login() {
         pollingUnit: res.pollingUnit,
       };
       const role = res.role || "user";
+      const party = res.organization?.party ?? null;
 
       if (res.token) {
-        localStorage.setItem("token", res.token);
-        localStorage.setItem("userAuth", JSON.stringify({ token: res.token, user, role }));
+        localStorage.setItem("userAuth", JSON.stringify({ token: res.token, user, role, party }));
       }
-      dispatch(setCredentials({ token: res.token, role, user }));
+      dispatch(setCredentials({ token: res.token, role, user, party }));
 
       navigate("/dashboard");
     } catch (err: unknown) {

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { logout, updateUser } from "../features/auth/authSlice";
+import { SlArrowLeft } from "react-icons/sl";
+import { logout, updateUser, setParty } from "../features/auth/authSlice";
 import type { RootState } from "../app/store";
 import UserDetailsModal from "../components/UserDetailsModal";
 import api from "../config/apiConfig";
@@ -195,14 +196,22 @@ const IconState = () => (
 
 /* eslint-enable max-len */
 
+interface TenantContext {
+  organization?: { _id: string; name: string; code?: string };
+  state?: { _id: string; name: string; code?: string } | null;
+  party?: { name: string; acronym: string; logo?: string; color?: string } | null;
+}
+
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
+  const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
   const role = useSelector((state: RootState) => state.auth.role);
+  const authParty = useSelector((state: RootState) => state.auth.party);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -214,21 +223,49 @@ export default function Layout() {
   const token = useSelector((state: RootState) => state.auth.token);
 
   useEffect(() => {
+    api
+      .get("/tenant-context")
+      .then((res) => {
+        const data = res.data;
+        if (data?.tenantContext?.organization || data?.organization) {
+          setTenantContext({
+            organization: data.tenantContext?.organization ?? data.organization,
+            state: data.tenantContext?.state ?? data.state ?? null,
+            party: data.party ?? data.tenantContext?.party ?? null,
+          });
+        } else {
+          setTenantContext(null);
+        }
+      })
+      .catch(() => setTenantContext(null));
+  }, []);
+
+  useEffect(() => {
     if (!user?.id || !token) return;
     api
       .get(`/users/${user.id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         const data = res.data;
+        let updated = false;
         if (data?.photo !== undefined) {
           dispatch(updateUser({ photo: data.photo }));
+          updated = true;
+        }
+        const party = data?.organization?.party ?? null;
+        if (party) {
+          dispatch(setParty(party));
+          updated = true;
+        }
+        if (updated) {
           const raw = localStorage.getItem("userAuth");
           if (raw) {
             try {
-              const stored = JSON.parse(raw) as { user?: { photo?: string }; token?: string; role?: string };
-              if (stored.user) {
+              const stored = JSON.parse(raw) as { user?: { photo?: string }; token?: string; role?: string; party?: unknown };
+              if (stored.user && data?.photo !== undefined) {
                 stored.user = { ...stored.user, photo: data.photo };
-                localStorage.setItem("userAuth", JSON.stringify(stored));
               }
+              if (party) stored.party = party;
+              localStorage.setItem("userAuth", JSON.stringify(stored));
             } catch {
               // ignore
             }
@@ -257,6 +294,24 @@ export default function Layout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   const isOverviewRole = role === "executive" || role === "regular" || role === "superadmin";
+
+  const ROLE_LABELS: Record<string, string> = {
+    regular: "Regular",
+    superadmin: "Super Admin",
+    executive: "Executive",
+    presiding_officer_po_agent: "Presiding Officer (PO) Agent",
+    ra_ward_collation_officer_agent: "RA / Ward Collation Officer Agent",
+    lga_collation_officer_agent: "LGA Collation Officer Agent",
+    state_constituency_returning_officer_agent: "State Constituency Returning Officer Agent",
+    federal_constituency_returning_officer_agent: "Federal Constituency Returning Officer Agent",
+    senatorial_district_agent: "Senatorial District Agent",
+    state_returning_officer_agent: "State Returning Officer Agent",
+    national_level_agent: "National Level Agent",
+  };
+  const roleLabel = role ? ROLE_LABELS[role] ?? role.replace(/_/g, " ") : "";
+
+  const partyLogo = tenantContext?.party?.logo ?? authParty?.logo;
+  const partyAcronym = tenantContext?.party?.acronym ?? authParty?.acronym;
 
   return (
     <div className="dash-layout">
@@ -435,18 +490,10 @@ export default function Layout() {
         </nav>
       </aside>
 
-      <button
-        type="button"
-        className="dash-sidebar__toggle"
-        onClick={() => setSidebarOpen((o) => !o)}
-        aria-label="Toggle menu"
-      >
-        <IconMenu />
-      </button>
-
       <main className="dash-main">
         <header className="dash-header">
-          <div className="dash-header__avatar-top" aria-hidden>
+          <div className="dash-header__top-bar">
+            <div className="dash-header__avatar-top" aria-hidden>
             <div
               className="dash-header__avatar"
               title={user?.username || "User"}
@@ -462,16 +509,43 @@ export default function Layout() {
               )}
             </div>
           </div>
+            <button
+              type="button"
+              className={`dash-sidebar__toggle ${partyLogo ? "dash-sidebar__toggle--logo" : ""}`}
+              onClick={() => setSidebarOpen((o) => !o)}
+              aria-label="Toggle menu"
+            >
+              {partyLogo ? (
+                <>
+                  <SlArrowLeft className="dash-sidebar__toggle-arrow" />
+                  <div className="dash-sidebar__toggle-logo-wrap">
+                    <img
+                      src={partyLogo}
+                      alt={partyAcronym || "Menu"}
+                      className="dash-sidebar__toggle-logo"
+                    />
+                  </div>
+                </>
+              ) : (
+                <IconMenu />
+              )}
+            </button>
+          </div>
           <div className="dash-header__row">
-            <h2 className="dash-header__greeting">
-              Good{" "}
-              {new Date().getHours() < 12
-                ? "morning"
-                : new Date().getHours() < 18
-                  ? "afternoon"
-                  : "evening"}
-              , {user?.username || "User"}!
-            </h2>
+            <div className="dash-header__greeting-wrap">
+              <h2 className="dash-header__greeting">
+                Good{" "}
+                {new Date().getHours() < 12
+                  ? "morning"
+                  : new Date().getHours() < 18
+                    ? "afternoon"
+                    : "evening"}
+                , {user?.username || "User"}!
+              </h2>
+              {roleLabel && (
+                <p className="dash-header__role">{roleLabel}</p>
+              )}
+            </div>
             <div className="dash-header__actions">
               <button
                 type="button"
