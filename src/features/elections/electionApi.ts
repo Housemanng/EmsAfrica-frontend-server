@@ -47,13 +47,20 @@ export const getElectionById = createAsyncThunk(
 export const getElectionsByOrganizationId = createAsyncThunk(
   "elections/getElectionsByOrganizationId",
   async (
-    params: { organizationId: string; query?: { state?: string; status?: string; group?: string } },
+    params: {
+      organizationId: string;
+      query?: { state?: string; status?: string; group?: string; includeResults?: boolean };
+    },
     { getState, rejectWithValue }
   ) => {
     try {
+      const query = { ...params.query };
+      if (query.includeResults) {
+        (query as Record<string, string>).includeResults = "true";
+      }
       const res = await api.get(
         `/elections/organization/${params.organizationId}`,
-        { params: params.query, headers: getAuthHeaders(getState) }
+        { params: query, headers: getAuthHeaders(getState) }
       );
       return res.data;
     } catch (e: any) {

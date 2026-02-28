@@ -68,18 +68,7 @@ const IconCheck = () => (
     <path d="M22 4 12 14.01l-3-3" />
   </svg>
 );
-const IconMapPin = () => (
-  <svg
-    className="dash-sidebar__icon"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
+
 const IconTrophy = () => (
   <svg
     className="dash-sidebar__icon"
@@ -119,18 +108,7 @@ const IconChevronRight = () => (
     <path d="M9 18l6-6-6-6" />
   </svg>
 );
-const IconSettings = () => (
-  <svg
-    className="dash-sidebar__icon"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-);
+
 const IconUsers = () => (
   <svg
     className="dash-sidebar__icon"
@@ -145,30 +123,8 @@ const IconUsers = () => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
-const IconHelp = () => (
-  <svg
-    className="dash-sidebar__icon"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-    <path d="M12 17h.01" />
-  </svg>
-);
-const IconShield = () => (
-  <svg
-    className="dash-sidebar__icon"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
+
+
 const IconBell = () => (
   <svg
     viewBox="0 0 24 24"
@@ -196,6 +152,46 @@ const IconMenu = () => (
     <path d="M3 18h18" />
   </svg>
 );
+const IconWard = () => (
+  <svg
+    className="dash-sidebar__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+const IconLGA = () => (
+  <svg
+    className="dash-sidebar__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <rect x="2" y="7" width="20" height="14" rx="2" />
+    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+    <line x1="12" y1="12" x2="12" y2="16" />
+    <line x1="10" y1="14" x2="14" y2="14" />
+  </svg>
+);
+const IconState = () => (
+  <svg
+    className="dash-sidebar__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M2 12h20" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
+
 /* eslint-enable max-len */
 
 export default function Layout() {
@@ -216,6 +212,8 @@ export default function Layout() {
 
   const closeSidebar = () => setSidebarOpen(false);
 
+  const isOverviewRole = role === "executive" || role === "regular" || role === "superadmin";
+
   return (
     <div className="dash-layout">
       <div
@@ -230,37 +228,115 @@ export default function Layout() {
         <nav className="dash-sidebar__nav">
           <div className="dash-sidebar__section">
             <div className="dash-sidebar__section-title">Menu</div>
-            <Link
-              to="/dashboard"
-              className={`dash-sidebar__link ${location.pathname === "/dashboard" ? "dash-sidebar__link--active" : ""}`}
+            {isOverviewRole && (
+              <Link
+                to="/dashboard"
+                className={`dash-sidebar__link ${location.pathname === "/dashboard" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconGrid /> Dashboard{" "}
+                {location.pathname === "/dashboard" && <IconChevronRight />}
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/dashboard/user-management"
+                className={`dash-sidebar__link ${location.pathname === "/dashboard/user-management" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconUsers /> Agent Management
+                {location.pathname === "/dashboard/user-management" && <IconChevronRight />}
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/elections"
+                className={`dash-sidebar__link ${location.pathname === "/elections" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconCalendar /> Elections
+                {location.pathname === "/elections" && <IconChevronRight />}
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/dashboard"
+                className="dash-sidebar__link"
+                onClick={closeSidebar}
+              >
+                <IconChart /> Analytics
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/dashboard"
+                className="dash-sidebar__link"
+                onClick={closeSidebar}
+              >
+                <IconCheck /> Accreditation
+              </Link>
+            )}
+           
+            {/* <Link
+              to="/results"
+              className={`dash-sidebar__link ${location.pathname === "/results" ? "dash-sidebar__link--active" : ""}`}
               onClick={closeSidebar}
             >
-              <IconGrid /> Dashboard{" "}
-              {location.pathname === "/dashboard" && <IconChevronRight />}
-            </Link>
-            <Link
-              to="/dashboard/user-management"
-              className={`dash-sidebar__link ${location.pathname === "/dashboard/user-management" ? "dash-sidebar__link--active" : ""}`}
+              <IconEdit /> Polling Unit Results{" "}
+              {location.pathname === "/results" && <IconChevronRight />}
+            </Link> */}
+            {(role === "presiding_officer_po_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
+              <Link
+              to="/results"
+              className={`dash-sidebar__link ${location.pathname === "/results" ? "dash-sidebar__link--active" : ""}`}
               onClick={closeSidebar}
             >
-              <IconUsers /> Agent Management
-              {location.pathname === "/dashboard/user-management" && <IconChevronRight />}
-            </Link>
-            <Link
-              to="/elections"
-              className={`dash-sidebar__link ${location.pathname === "/elections" ? "dash-sidebar__link--active" : ""}`}
-              onClick={closeSidebar}
-            >
-              <IconCalendar /> Elections
-              {location.pathname === "/elections" && <IconChevronRight />}
-            </Link>
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconChart /> Analytics
-            </Link>
+              <IconEdit /> Polling Unit Results{" "}
+              {location.pathname === "/results" && <IconChevronRight />}
+              </Link>
+            )}
+            {(role === "ra_ward_collation_officer_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
+              <Link
+                to="/ward-results"
+                className={`dash-sidebar__link ${location.pathname === "/ward-results" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconWard /> Ward Results{" "}
+                {location.pathname === "/ward-results" && <IconChevronRight />}
+              </Link>
+            )}
+            {(role === "lga_collation_officer_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
+              <Link
+                to="/lga-results"
+                className={`dash-sidebar__link ${location.pathname === "/lga-results" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconLGA /> LGA Results{" "}
+                {location.pathname === "/lga-results" && <IconChevronRight />}
+              </Link>
+            )}
+            {(role === "state_constituency_returning_officer_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
+              <Link
+                to="/state-results"
+                className={`dash-sidebar__link ${location.pathname === "/state-results" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconState /> State Results{" "}
+                {location.pathname === "/state-results" && <IconChevronRight />}
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/results/winning-analysis"
+                className={`dash-sidebar__link ${location.pathname === "/results/winning-analysis" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconTrophy /> Result Winning Analysis{" "}
+                {location.pathname === "/results/winning-analysis" && (
+                  <IconChevronRight />
+                )}
+              </Link>
+            )}
             <Link
               to="/dashboard"
               className="dash-sidebar__link"
@@ -268,39 +344,7 @@ export default function Layout() {
             >
               <IconFile /> Reports
             </Link>
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconCheck /> Accreditation
-            </Link>
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconMapPin /> Polling Units
-            </Link>
-            <Link
-              to="/results"
-              className={`dash-sidebar__link ${location.pathname === "/results" ? "dash-sidebar__link--active" : ""}`}
-              onClick={closeSidebar}
-            >
-              <IconEdit /> Results{" "}
-              {location.pathname === "/results" && <IconChevronRight />}
-            </Link>
-            <Link
-              to="/results/winning-analysis"
-              className={`dash-sidebar__link ${location.pathname === "/results/winning-analysis" ? "dash-sidebar__link--active" : ""}`}
-              onClick={closeSidebar}
-            >
-              <IconTrophy /> Result Winning Analysis{" "}
-              {location.pathname === "/results/winning-analysis" && (
-                <IconChevronRight />
-              )}
-            </Link>
-            {role !== "user" && (
+            {/* {role !== "user" && (
               <Link
                 to="/admin"
                 className={`dash-sidebar__link ${location.pathname === "/admin" ? "dash-sidebar__link--active" : ""}`}
@@ -308,20 +352,26 @@ export default function Layout() {
               >
                 <IconShield /> Admin Panel
               </Link>
-            )}
+            )} */}
           </div>
           <div className="dash-sidebar__section">
             <div className="dash-sidebar__section-title">Settings</div>
-            <button
-              type="button"
-              className="dash-sidebar__link dash-sidebar__link--btn"
-              onClick={() => {
-                setUserModalOpen(true);
-                closeSidebar();
-              }}
+           
+         
+            {/* <Link
+              to="/dashboard"
+              className="dash-sidebar__link"
+              onClick={closeSidebar}
             >
-              <IconUsers /> User Details
-            </button>
+              <IconSettings /> System Settings
+            </Link>
+            <Link
+              to="/dashboard"
+              className="dash-sidebar__link"
+              onClick={closeSidebar}
+            >
+              <IconHelp /> Support
+            </Link> */}
             <button
               type="button"
               className="dash-sidebar__link dash-sidebar__link--btn"
@@ -337,20 +387,6 @@ export default function Layout() {
               </svg>
               Logout
             </button>
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconSettings /> System Settings
-            </Link>
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconHelp /> Support
-            </Link>
           </div>
         </nav>
       </aside>

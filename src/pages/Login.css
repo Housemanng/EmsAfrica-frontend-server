@@ -177,6 +177,24 @@
   cursor: not-allowed;
 }
 
+.login-page__suspended {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.5rem;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
+.login-page__suspended p {
+  margin: 0 0 0.5rem 0;
+}
+
+.login-page__suspended p:last-child {
+  margin-bottom: 0;
+}
+
 .login-page__footer {
   color: #71717a;
   font-size: clamp(0.65rem, 1.5vh, 0.75rem);

@@ -189,6 +189,94 @@ export const getResultsOverview = createAsyncThunk(
   }
 );
 
+export const getPollingUnitsCoverage = createAsyncThunk(
+  "results/getPollingUnitsCoverage",
+  async (
+    { electionId, params }: { electionId: string; params?: { source?: string } },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.get(`/results/election/${electionId}/polling-units-coverage`, {
+        params,
+        headers: getAuthHeaders(getState),
+      });
+      return res.data as { electionId: string; entered: number; total: number };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get polling units coverage"
+      );
+    }
+  }
+);
+
+export const getWardsCoverage = createAsyncThunk(
+  "results/getWardsCoverage",
+  async ({ electionId }: { electionId: string }, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(`/results/election/${electionId}/wards-coverage`, {
+        headers: getAuthHeaders(getState),
+      });
+      return res.data as { electionId: string; entered: number; total: number };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get wards coverage"
+      );
+    }
+  }
+);
+
+export const getLgasCoverage = createAsyncThunk(
+  "results/getLgasCoverage",
+  async ({ electionId }: { electionId: string }, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(`/results/election/${electionId}/lgas-coverage`, {
+        headers: getAuthHeaders(getState),
+      });
+      return res.data as {
+        electionId: string;
+        entered: number;
+        total: number;
+        aspirantLgaWins?: Array<{
+          aspirantId: string;
+          aspirantName: string;
+          aspirantPartyCode: string;
+          lgasWon: number;
+        }>;
+      };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get LGAs coverage"
+      );
+    }
+  }
+);
+
+export const getStatesCoverage = createAsyncThunk(
+  "results/getStatesCoverage",
+  async ({ electionId }: { electionId: string }, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(`/results/election/${electionId}/states-coverage`, {
+        headers: getAuthHeaders(getState),
+      });
+      return res.data as {
+        electionId: string;
+        entered: number;
+        total: number;
+        aspirantStateWins?: Array<{
+          aspirantId: string;
+          aspirantName: string;
+          aspirantPartyCode: string;
+          statesWon: number;
+        }>;
+      };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get states coverage"
+      );
+    }
+  }
+);
+
 export const getDashboardSummary = createAsyncThunk(
   "results/getDashboardSummary",
   async (electionId: string, { getState, rejectWithValue }) => {
@@ -299,6 +387,23 @@ export const getResultsByState = createAsyncThunk(
     } catch (e: any) {
       return rejectWithValue(
         e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get results by state"
+      );
+    }
+  }
+);
+
+export const getAspirantTotalsByElectionAndPollingUnit = createAsyncThunk(
+  "results/getAspirantTotalsByElectionAndPollingUnit",
+  async (params: { electionId: string; pollingUnitId: string }, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(
+        `/results/election/${params.electionId}/polling-unit-totals`,
+        { params: { pollingUnitId: params.pollingUnitId }, headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get polling unit aspirant totals"
       );
     }
   }

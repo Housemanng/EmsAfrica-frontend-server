@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import type { AppDispatch, RootState } from "../app/store";
@@ -10,13 +10,12 @@ import {
   startVoting,
   concludeElection,
 } from "../features/elections";
-import { createAspirantByElectionId } from "../features/aspirants";
+import { createAspirantByElectionId, deleteAspirant } from "../features/aspirants";
 import {
   selectElectionsByOrganizationId,
   selectElectionsByOrganizationIdLoading,
   selectElectionsByOrganizationIdError,
 } from "../features/elections/electionSelectors";
-import SearchableSelect from "../components/SearchableSelect";
 import "./Dashboard.css";
 
 const ELECTION_TYPE_OPTIONS = [
@@ -33,11 +32,28 @@ const ELECTION_TYPE_OPTIONS = [
 
 /* eslint-disable max-len */
 const IconCalendar = () => (
-  <svg className="dash-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
     <line x1="16" y1="2" x2="16" y2="6" />
     <line x1="8" y1="2" x2="8" y2="6" />
     <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+const IconLayers = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+    <polyline points="2 17 12 22 22 17" />
+  </svg>
+);
+const IconActivity = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+);
+const IconCheckCircle = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
   </svg>
 );
 const IconSearch = () => (
@@ -51,6 +67,19 @@ const IconChevron = () => (
     <path d="M9 18l6-6-6-6" />
   </svg>
 );
+const IconChevronDown = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+);
 /* eslint-enable max-len */
 
 interface Aspirant {
@@ -61,6 +90,16 @@ interface Aspirant {
   partyCode?: string;
   party?: { name?: string; acronym?: string };
 }
+
+type AspirantTotals = {
+  aspirants?: Array<{
+    aspirant: { _id?: string; name?: string; partyCode?: string; party?: string };
+    totalVotes: number;
+    isLeading: boolean;
+    position: number;
+    positionLabel?: string;
+  }>;
+};
 
 interface Election {
   _id: string;
@@ -74,6 +113,7 @@ interface Election {
   votingStartedAt?: string;
   concludedAt?: string;
   aspirants?: Aspirant[];
+  aspirantTotals?: AspirantTotals;
 }
 
 const formatType = (type?: string) =>
@@ -86,6 +126,30 @@ const STATUS_LABELS: Record<string, string> = {
   upcoming: "Upcoming",
   active: "Active",
   concluded: "Concluded",
+};
+
+/** Renders leading party code and percentage for an election (used in table) */
+function LeadingCell({ totals }: { totals: AspirantTotals | null | undefined }) {
+  if (!totals?.aspirants?.length) return <span className="dash-table__leading">—</span>;
+  const totalVotes = totals.aspirants.reduce((s: number, t: { totalVotes?: number }) => s + (t.totalVotes ?? 0), 0);
+  if (totalVotes === 0) return <span className="dash-table__leading">—</span>;
+  const leader = totals.aspirants[0];
+  const leaderVotes = leader?.totalVotes ?? 0;
+  const pct = (leaderVotes / totalVotes) * 100;
+  const partyCode = (leader?.aspirant?.partyCode ?? "").toUpperCase();
+  return (
+    <span className="dash-table__leading">
+      <span className="dash-table__leading-party">{partyCode}</span>
+      <span className="dash-table__leading-pct">{pct.toFixed(1)}%</span>
+      <span className="dash-table__leading-votes">({leaderVotes.toLocaleString()} votes)</span>
+    </span>
+  );
+}
+
+const formatPosition = (pos: number, label?: string) => {
+  if (label) return label.charAt(0).toUpperCase() + label.slice(1);
+  const ord = ["1st", "2nd", "3rd"];
+  return pos <= 3 ? ord[pos - 1] ?? `${pos}th` : `${pos}th`;
 };
 
 export default function Elections() {
@@ -111,24 +175,38 @@ export default function Elections() {
   const [createAspirantForm, setCreateAspirantForm] = useState({ name: "", partyCode: "", party: "" });
   const [createAspirantError, setCreateAspirantError] = useState("");
   const [createAspirantLoading, setCreateAspirantLoading] = useState(false);
+  const [actionsOpenId, setActionsOpenId] = useState<string | null>(null);
+  const lastFetchedOrgRef = useRef<string | null>(null);
 
   const organizationName = useSelector((state: RootState) => state.auth.user?.organization?.name);
   const organizationId = useSelector((state: RootState) => state.auth.user?.organization?._id ?? state.auth.user?.organization?.id);
+  const electionsQuery = { includeResults: true };
   const elections = useSelector((state: RootState) =>
-    selectElectionsByOrganizationId(organizationId ?? "")(state)
+    selectElectionsByOrganizationId(organizationId ?? "", electionsQuery)(state)
   ) as Election[] | undefined;
   const loading = useSelector((state: RootState) =>
-    selectElectionsByOrganizationIdLoading(organizationId ?? "")(state)
+    selectElectionsByOrganizationIdLoading(organizationId ?? "", electionsQuery)(state)
   );
   const error = useSelector((state: RootState) =>
-    (selectElectionsByOrganizationIdError(organizationId ?? "")(state) as string | null) ?? null
+    (selectElectionsByOrganizationIdError(organizationId ?? "", electionsQuery)(state) as string | null) ?? null
   );
 
   useEffect(() => {
-    if (organizationId) {
-      dispatch(getElectionsByOrganizationId({ organizationId }));
+    if (!organizationId) {
+      lastFetchedOrgRef.current = null;
+      return;
     }
+    if (lastFetchedOrgRef.current === organizationId) return;
+    lastFetchedOrgRef.current = organizationId;
+    dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
   }, [dispatch, organizationId]);
+
+  useEffect(() => {
+    if (!actionsOpenId) return;
+    const close = () => setActionsOpenId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [actionsOpenId]);
 
   const filteredElections = (elections ?? []).filter((e) => {
     const matchesStatus = !statusFilter || e.status === statusFilter;
@@ -180,7 +258,7 @@ export default function Elections() {
         })
       ).unwrap();
       setShowCreateModal(false);
-      dispatch(getElectionsByOrganizationId({ organizationId }));
+      dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
     } catch (err: unknown) {
       setCreateError((err as { message?: string })?.message ?? "Failed to create election");
     } finally {
@@ -220,7 +298,7 @@ export default function Elections() {
         })
       ).unwrap();
       setEditingElection(null);
-      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId }));
+      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
     } catch (err: unknown) {
       setEditError((err as { message?: string })?.message ?? "Failed to update election");
     } finally {
@@ -243,7 +321,7 @@ export default function Elections() {
     try {
       await dispatch(deleteElection(election._id)).unwrap();
       Swal.fire({ icon: "success", title: "Deleted", text: "Election deleted successfully." });
-      dispatch(getElectionsByOrganizationId({ organizationId }));
+      dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
     } catch (err: unknown) {
       Swal.fire({
         icon: "error",
@@ -268,7 +346,7 @@ export default function Elections() {
     try {
       await dispatch(startVoting(election._id)).unwrap();
       Swal.fire({ icon: "success", title: "Started", text: "Voting has started." });
-      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId }));
+      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
     } catch (err: unknown) {
       Swal.fire({
         icon: "error",
@@ -293,7 +371,7 @@ export default function Elections() {
     try {
       await dispatch(concludeElection(election._id)).unwrap();
       Swal.fire({ icon: "success", title: "Concluded", text: "Election has been concluded." });
-      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId }));
+      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
     } catch (err: unknown) {
       Swal.fire({
         icon: "error",
@@ -313,6 +391,39 @@ export default function Elections() {
   const handleCloseCreateAspirant = () => {
     setShowCreateAspirantModal(false);
     setCreateAspirantElection(null);
+  };
+
+  const handleRemoveAspirant = async (aspirant: Aspirant, election: Election) => {
+    const result = await Swal.fire({
+      title: "Remove Aspirant",
+      html: `Are you sure you want to remove <strong>"${aspirant.name}"</strong> from this election? This cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, remove",
+      cancelButtonText: "Cancel",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await dispatch(deleteAspirant(aspirant._id)).unwrap();
+      setViewingElection((prev) =>
+        prev && prev._id === election._id
+          ? {
+              ...prev,
+              aspirants: (prev.aspirants ?? []).filter((a) => a._id !== aspirant._id),
+            }
+          : prev
+      );
+      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
+      Swal.fire({ icon: "success", title: "Removed", text: "Aspirant removed successfully." });
+    } catch (err: unknown) {
+      Swal.fire({
+        icon: "error",
+        title: "Remove failed",
+        text: (err as { message?: string })?.message ?? "Failed to remove aspirant",
+      });
+    }
   };
 
   const handleCreateAspirantSubmit = async (e: React.FormEvent) => {
@@ -335,7 +446,7 @@ export default function Elections() {
         })
       ).unwrap();
       handleCloseCreateAspirant();
-      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId }));
+      if (organizationId) dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
       Swal.fire({ icon: "success", title: "Aspirant created", text: "Aspirant added successfully." });
     } catch (err: unknown) {
       setCreateAspirantError((err as { message?: string })?.message ?? "Failed to create aspirant");
@@ -371,77 +482,65 @@ export default function Elections() {
       </div>
 
       <div className="dash-cards">
-        <div className="dash-card">
-          <h3 className="dash-card__title">Total Elections</h3>
-          <p className="dash-card__value">{counts.total}</p>
-          <p className="dash-card__meta">In this organization</p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevron />
-          </div>
-        </div>
-        <div className="dash-card">
-          <h3 className="dash-card__title">Upcoming</h3>
-          <p className="dash-card__value">{counts.upcoming}</p>
-          <p className="dash-card__meta">Scheduled</p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevron />
-          </div>
-        </div>
-        <div className="dash-card">
-          <h3 className="dash-card__title">Active</h3>
-          <p className="dash-card__value">{counts.active}</p>
-          <p className="dash-card__meta">Voting in progress</p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevron />
-          </div>
-        </div>
-        <div className="dash-card">
-          <h3 className="dash-card__title">Concluded</h3>
-          <p className="dash-card__value">{counts.concluded}</p>
-          <p className="dash-card__meta">Completed</p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevron />
-          </div>
-        </div>
-      </div>
-
-      {/* Status filter cards */}
-      <div className="dash-role-cards">
         <button
           type="button"
-          className={`dash-role-card ${statusFilter === null ? "dash-role-card--active" : ""}`}
+          className={`dash-card dash-card--filter ${statusFilter === null ? "dash-card--active" : ""}`}
           onClick={() => setStatusFilter(null)}
         >
-          <span className="dash-role-card__label">All</span>
-          <span className="dash-role-card__count">{counts.total}</span>
+          <div className="dash-card__icon-wrap dash-card__icon-wrap--total">
+            <IconLayers />
+          </div>
+          <div className="dash-card__body">
+            <h3 className="dash-card__title">Total Elections</h3>
+            <p className="dash-card__value">{counts.total}</p>
+            <p className="dash-card__meta">In this organization</p>
+          </div>
+          <span className="dash-card__chevron"><IconChevron /></span>
         </button>
         <button
           type="button"
-          className={`dash-role-card ${statusFilter === "upcoming" ? "dash-role-card--active" : ""}`}
+          className={`dash-card dash-card--filter ${statusFilter === "upcoming" ? "dash-card--active" : ""}`}
           onClick={() => setStatusFilter(statusFilter === "upcoming" ? null : "upcoming")}
         >
-          <span className="dash-role-card__label">Upcoming</span>
-          <span className="dash-role-card__count">{counts.upcoming}</span>
+          <div className="dash-card__icon-wrap dash-card__icon-wrap--upcoming">
+            <IconCalendar />
+          </div>
+          <div className="dash-card__body">
+            <h3 className="dash-card__title">Upcoming</h3>
+            <p className="dash-card__value">{counts.upcoming}</p>
+            <p className="dash-card__meta">Scheduled</p>
+          </div>
+          <span className="dash-card__chevron"><IconChevron /></span>
         </button>
         <button
           type="button"
-          className={`dash-role-card ${statusFilter === "active" ? "dash-role-card--active" : ""}`}
+          className={`dash-card dash-card--filter ${statusFilter === "active" ? "dash-card--active" : ""}`}
           onClick={() => setStatusFilter(statusFilter === "active" ? null : "active")}
         >
-          <span className="dash-role-card__label">Active</span>
-          <span className="dash-role-card__count">{counts.active}</span>
+          <div className="dash-card__icon-wrap dash-card__icon-wrap--active">
+            <IconActivity />
+          </div>
+          <div className="dash-card__body">
+            <h3 className="dash-card__title">Active</h3>
+            <p className="dash-card__value">{counts.active}</p>
+            <p className="dash-card__meta">Voting in progress</p>
+          </div>
+          <span className="dash-card__chevron"><IconChevron /></span>
         </button>
         <button
           type="button"
-          className={`dash-role-card ${statusFilter === "concluded" ? "dash-role-card--active" : ""}`}
+          className={`dash-card dash-card--filter ${statusFilter === "concluded" ? "dash-card--active" : ""}`}
           onClick={() => setStatusFilter(statusFilter === "concluded" ? null : "concluded")}
         >
-          <span className="dash-role-card__label">Concluded</span>
-          <span className="dash-role-card__count">{counts.concluded}</span>
+          <div className="dash-card__icon-wrap dash-card__icon-wrap--concluded">
+            <IconCheckCircle />
+          </div>
+          <div className="dash-card__body">
+            <h3 className="dash-card__title">Concluded</h3>
+            <p className="dash-card__value">{counts.concluded}</p>
+            <p className="dash-card__meta">Completed</p>
+          </div>
+          <span className="dash-card__chevron"><IconChevron /></span>
         </button>
       </div>
 
@@ -474,7 +573,7 @@ export default function Elections() {
                   <th>Type</th>
                   <th>Date</th>
                   <th>Status</th>
-                  {/* <th>Group</th> */}
+                  <th>Leading</th>
                   <th>Aspirants</th>
                   <th className="dash-table__actions-col">Actions</th>
                 </tr>
@@ -482,7 +581,7 @@ export default function Elections() {
               <tbody>
                 {filteredElections.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="dash-table__empty">
+                    <td colSpan={8} className="dash-table__empty">
                       No elections found.
                     </td>
                   </tr>
@@ -512,67 +611,60 @@ export default function Elections() {
                           {STATUS_LABELS[e.status] ?? e.status}
                         </span>
                       </td>
-                      {/* <td>{e.electionGroup ?? "—"}</td> */}
+                      <td>
+                        <LeadingCell totals={e.aspirantTotals} />
+                      </td>
                       <td>{e.aspirants?.length ?? 0}</td>
                       <td className="dash-table__actions-col">
-                        <div className="dash-table__actions-wrap">
+                        <div
+                          className="dash-table__actions-dropdown"
+                          onClick={(ev) => ev.stopPropagation()}
+                        >
                           <button
                             type="button"
-                            className="dash-page__btn dash-page__btn--outline"
-                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}
-                            onClick={() => handleView(e)}
+                            className="dash-table__actions-trigger"
+                            onClick={() => setActionsOpenId(actionsOpenId === e._id ? null : e._id)}
+                            aria-expanded={actionsOpenId === e._id}
+                            aria-haspopup="true"
                           >
-                            View
+                            Actions
+                            <IconChevronDown />
                           </button>
-                          {canManage && (
-                            <button
-                              type="button"
-                              className="dash-page__btn dash-page__btn--outline"
-                              style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#ffffff" }}
-                              onClick={() => handleOpenCreateAspirant(e)}
-                            >
-                            Add Aspirant
-                            </button>
-                          )}
-                          {e.status === "upcoming" && canManage && (
-                            <button
-                              type="button"
-                              className="dash-page__btn dash-page__btn--outline"
-                              style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#059669" }}
-                              onClick={() => handleStartVoting(e)}
-                            >
-                              Start
-                            </button>
-                          )}
-                          {e.status === "active" && canManage && (
-                            <button
-                              type="button"
-                              className="dash-page__btn dash-page__btn--outline"
-                              style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#d97706" }}
-                              onClick={() => handleConclude(e)}
-                            >
-                              Conclude
-                            </button>
-                          )}
-                          {canManage && (
-                            <>
-                              <button
-                                type="button"
-                                className="dash-page__btn dash-page__btn--outline"
-                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}
-                                onClick={() => handleEdit(e)}
-                              >
-                                Edit
+                          {actionsOpenId === e._id && (
+                            <div className="dash-table__actions-menu">
+                              <button type="button" onClick={() => { handleView(e); setActionsOpenId(null); }}>
+                                View
                               </button>
-                              <button
-                                type="button"
-                                className="dash-page__btn"
-                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", background: "#dc2626", color: "#fff" }}
-                                onClick={() => handleDelete(e)}
-                              >
-                                Delete
-                              </button>
-                            </>
+                              {canManage && (
+                                <>
+                                  <button type="button" onClick={() => { handleOpenCreateAspirant(e); setActionsOpenId(null); }}>
+                                    Add Aspirant
+                                  </button>
+                                  {e.status === "upcoming" && (
+                                    <button type="button" onClick={() => { handleStartVoting(e); setActionsOpenId(null); }}>
+                                      Start
+                                    </button>
+                                  )}
+                                  {e.status === "active" && (
+                                    <button type="button" onClick={() => { handleConclude(e); setActionsOpenId(null); }}>
+                                      Conclude
+                                    </button>
+                                  )}
+                                  <button type="button" onClick={() => { handleEdit(e); setActionsOpenId(null); }}>
+                                    Edit
+                                  </button>
+                                  {e.status === "upcoming" && (
+                                    <button
+                                      type="button"
+                                      className="dash-table__actions-menu-item--danger"
+                                      onClick={() => { handleDelete(e); setActionsOpenId(null); }}
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -600,7 +692,7 @@ export default function Elections() {
               Add a new election for <strong>{organizationName ?? "this organization"}</strong>.
             </p>
             <form onSubmit={handleCreateSubmit} className="dash-modal__form dash-modal__form--create-user">
-              <div className="dash-modal__field">
+              <div className="dash-modal__field dash-modal__field--full">
                 <label htmlFor="ce-name">Name</label>
                 <input
                   id="ce-name"
@@ -612,34 +704,29 @@ export default function Elections() {
                 />
               </div>
               <div className="dash-modal__field dash-modal__field--full">
-                <SearchableSelect
+                <label htmlFor="ce-type">Type</label>
+                <select
                   id="ce-type"
-                  label="Type"
                   value={createForm.type}
-                  onChange={(val) => setCreateForm((f) => ({ ...f, type: val }))}
-                  options={ELECTION_TYPE_OPTIONS}
-                  placeholder="Search or select election type..."
+                  onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value }))}
                   required
-                />
+                >
+                  {ELECTION_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="dash-modal__field">
+              <div className="dash-modal__field dash-modal__field--full">
                 <label htmlFor="ce-date">Election Date</label>
                 <input
                   id="ce-date"
                   type="date"
+                  min={new Date().toISOString().split("T")[0]}
                   value={createForm.electionDate}
                   onChange={(e) => setCreateForm((f) => ({ ...f, electionDate: e.target.value }))}
                   required
-                />
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="ce-group">Group (optional)</label>
-                <input
-                  id="ce-group"
-                  type="text"
-                  value={createForm.electionGroup}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, electionGroup: e.target.value }))}
-                  placeholder="e.g. 2023 General"
                 />
               </div>
               {createError && <p className="dash-table-section__error">{createError}</p>}
@@ -790,20 +877,115 @@ export default function Elections() {
                 </div>
               )}
               {viewingElection.aspirants && viewingElection.aspirants.length > 0 && (
-                <div className="dash-modal__view-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.5rem" }}>
-                  <span className="dash-modal__view-label">Aspirants ({viewingElection.aspirants.length})</span>
-                  <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
-                    {viewingElection.aspirants.map((a) => (
-                      <li key={a._id}>
-                        {a.name}
-                        {(a.partyCode || a.party?.acronym) && (
-                          <span style={{ color: "#6b7280", marginLeft: "0.5rem" }}>
-                            ({(a.partyCode ?? a.party?.acronym ?? "").toUpperCase()})
-                          </span>
+                <div className="dash-modal__aspirants">
+                  {(() => {
+                    const totals = viewingElection.aspirantTotals;
+                    const totalsList = totals?.aspirants ?? [];
+                    const totalVotes = totalsList.reduce((s: number, t: { totalVotes?: number }) => s + (t.totalVotes ?? 0), 0);
+                    const displayList = totalsList.length > 0
+                      ? totalsList
+                      : (viewingElection.aspirants ?? []).map((a) => ({
+                          position: 0,
+                          positionLabel: undefined as string | undefined,
+                          isLeading: false,
+                          aspirant: { _id: a._id, name: a.name, partyCode: a.partyCode ?? (a.party as { acronym?: string })?.acronym, party: "" },
+                          totalVotes: 0,
+                        }));
+                    const aspirantCount = totalsList.length > 0 ? totalsList.length : (viewingElection.aspirants ?? []).length;
+                    const findFullAspirant = (id: string) => (viewingElection.aspirants ?? []).find((a) => a._id === id);
+                    return (
+                      <>
+                        <div className="dash-modal__aspirants-header">
+                          <span className="dash-modal__aspirants-label">Aspirants ({aspirantCount})</span>
+                          {totalsList.length > 0 && (
+                            <>
+                              <span className="dash-modal__aspirants-meta">
+                                Total: {totalVotes.toLocaleString()} votes
+                              </span>
+                              {totalsList[0]?.isLeading && (
+                                <span className="dash-modal__aspirants-leading">
+                                  Leading: {totalsList[0]?.aspirant?.name ?? "—"} ({(totalsList[0]?.totalVotes ?? 0).toLocaleString()})
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {totalVotes > 0 && (
+                          <div className="dash-modal__aspirants-progress">
+                            <div className="dash-modal__aspirants-progress-bar">
+                              {displayList.map((t, i) => {
+                                const pct = (t.totalVotes / totalVotes) * 100;
+                                const n = displayList.length;
+                                const color = n === 1
+                                  ? "#059669"
+                                  : i === 0
+                                    ? "#059669"
+                                    : i === n - 1
+                                      ? "#dc2626"
+                                      : ["#2563eb", "#7c3aed", "#d97706"][(i - 1) % 3];
+                                return (
+                                  <div
+                                    key={t.aspirant?._id ?? i}
+                                    className="dash-modal__aspirants-progress-segment"
+                                    style={{ width: `${pct}%`, background: color }}
+                                    title={`${t.aspirant?.name ?? "—"}: ${t.totalVotes.toLocaleString()} (${pct.toFixed(1)}%)`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
-                      </li>
-                    ))}
-                  </ul>
+                        <div className="dash-modal__aspirants-list">
+                          {displayList.map((t) => {
+                            const pct = totalVotes > 0 ? (t.totalVotes / totalVotes) * 100 : 0;
+                            const fullAspirant = findFullAspirant(t.aspirant?._id ?? "");
+                            const aspirantForDelete = fullAspirant ?? { _id: t.aspirant?._id ?? "", name: t.aspirant?.name ?? "—" } as Aspirant;
+                            const barColor = t.isLeading
+                              ? "#059669"
+                              : ["#2563eb", "#7c3aed", "#d97706", "#dc2626"][(t.position - 1) % 4] ?? "#6b7280";
+                            return (
+                              <div key={t.aspirant?._id ?? ""} className="dash-modal__aspirant-item">
+                                <div className="dash-modal__aspirant-main">
+                                  <span className="dash-modal__aspirant-name">
+                                    {t.aspirant?.name ?? "—"}
+                                    {t.isLeading && <span className="dash-modal__aspirant-badge">Leading</span>}
+                                  </span>
+                                  {t.aspirant?.partyCode && (
+                                    <span className="dash-modal__aspirant-party">
+                                      {(t.aspirant.partyCode ?? "").toUpperCase()}
+                                    </span>
+                                  )}
+                                  <div className="dash-modal__aspirant-votes">
+                                    <div className="dash-modal__aspirant-progress-bar">
+                                      <div className="dash-modal__aspirant-progress-fill" style={{ width: `${pct}%`, background: barColor }} />
+                                    </div>
+                                    <span className="dash-modal__aspirant-count">
+                                      {t.totalVotes.toLocaleString()} votes{t.totalVotes > 0 ? ` (${pct.toFixed(1)}%)` : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="dash-modal__aspirant-right">
+                                  {t.position > 0 && (
+                                    <span className="dash-modal__aspirant-position">{formatPosition(t.position, t.positionLabel)}</span>
+                                  )}
+                                  {canManage && viewingElection.status === "upcoming" && (
+                                    <button
+                                      type="button"
+                                      className="dash-modal__aspirant-remove"
+                                      onClick={() => handleRemoveAspirant(aspirantForDelete, viewingElection)}
+                                      title="Remove aspirant"
+                                    >
+                                      <IconTrash />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -811,31 +993,6 @@ export default function Elections() {
               <button type="button" className="dash-page__btn dash-page__btn--outline" onClick={handleCloseView}>
                 Close
               </button>
-              {canManage && (
-                <>
-                  <button
-                    type="button"
-                    className="dash-page__btn dash-page__btn--outline"
-                    style={{ color: "#2563eb" }}
-                    onClick={() => {
-                      handleCloseView();
-                      handleOpenCreateAspirant(viewingElection);
-                    }}
-                  >
-                    Create Aspirant
-                  </button>
-                  <button
-                    type="button"
-                    className="dash-page__btn dash-page__btn--solid"
-                    onClick={() => {
-                      handleCloseView();
-                      handleEdit(viewingElection);
-                    }}
-                  >
-                    Edit
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>

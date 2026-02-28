@@ -6,6 +6,10 @@ import Dashboard from "../pages/Dashboard";
 import UserManagement from "../pages/UserManagement";
 import Elections from "../pages/Elections";
 import Results from "../pages/Results";
+import PollingUnitResult from "../pages/PollingUnitResult";
+import WardResult from "../pages/WardResult";
+import LGAResult from "../pages/LGAResult";
+import StateResult from "../pages/StateResult";
 import ResultWinningAnalysis from "../pages/ResultWinningAnalysis";
 import AdminDashboard from "../pages/AdminDashboard";
 import NotFound from "../pages/ErrorPage";
@@ -52,6 +56,10 @@ export const router = createBrowserRouter([
       { path: "/dashboard/user-management", element: <UserManagement /> },
       { path: "/elections", element: <Elections /> },
       { path: "/results", element: <Results /> },
+      { path: "/pu-results", element: <PollingUnitResult /> },
+      { path: "/ward-results", element: <WardResult /> },
+      { path: "/lga-results", element: <LGAResult /> },
+      { path: "/state-results", element: <StateResult /> },
       { path: "/results/winning-analysis", element: <ResultWinningAnalysis /> },
       { path: "/admin", element: <AdminDashboard /> },
     ],

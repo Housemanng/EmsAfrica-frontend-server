@@ -65,6 +65,70 @@ export const selectResultsOverviewLoading = (electionId: string) => (state: Root
 export const selectDashboardSummary = (electionId: string) => (state: RootState) =>
   state.results.cache[buildKey("results/getDashboardSummary", electionId)] as any;
 
+export const selectPollingUnitsCoverage = (electionId: string) => (state: RootState) => {
+  const data = state.results.cache[buildKey("results/getPollingUnitsCoverage", { electionId })] as
+    | {
+        entered: number;
+        total: number;
+        aspirantPollingUnitWins?: Array<{
+          aspirantId: string;
+          aspirantName: string;
+          aspirantPartyCode: string;
+          pollingUnitsWon: number;
+        }>;
+      }
+    | undefined;
+  return data ?? null;
+};
+
+export const selectLgasCoverage = (electionId: string) => (state: RootState) => {
+  const data = state.results.cache[buildKey("results/getLgasCoverage", { electionId })] as
+    | {
+        entered: number;
+        total: number;
+        aspirantLgaWins?: Array<{
+          aspirantId: string;
+          aspirantName: string;
+          aspirantPartyCode: string;
+          lgasWon: number;
+        }>;
+      }
+    | undefined;
+  return data ?? null;
+};
+
+export const selectLgaCollation = (
+  electionId: string,
+  lgaId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getResultsByElectionAndLga", { electionId, lgaId })
+  ] as { electionId?: string; lgaId?: string; results?: any[] } | undefined;
+
+export const selectAspirantTotalsByLgaLocal = (
+  electionId: string,
+  lgaId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsByElectionAndLga", { electionId, lgaId })
+  ] as any;
+
+export const selectWardsCoverage = (electionId: string) => (state: RootState) => {
+  const data = state.results.cache[buildKey("results/getWardsCoverage", { electionId })] as
+    | {
+        entered: number;
+        total: number;
+        aspirantWardWins?: Array<{
+          aspirantId: string;
+          aspirantName: string;
+          aspirantPartyCode: string;
+          wardsWon: number;
+        }>;
+      }
+    | undefined;
+  return data ?? null;
+};
+
 export const selectMyPartyOverview = (
   electionId: string,
   params?: { source?: string }
@@ -116,12 +180,80 @@ export const selectResultsByWard = (
   wardId: string
 ) => (state: RootState) =>
   state.results.cache[buildKey("results/getResultsByWard", { electionId, wardId })] as any;
+
+export const selectWardCollation = (
+  electionId: string,
+  wardId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getResultsByElectionAndWard", { electionId, wardId })
+  ] as { electionId?: string; wardId?: string; results?: any[] } | undefined;
 export const selectAspirantTotalsByWard = (
   electionId: string,
   wardId: string
 ) => (state: RootState) =>
   state.results.cache[
     buildKey("results/getAspirantTotalsByElectionAndWard", { electionId, wardId })
+  ] as any;
+
+export const selectAspirantTotalsFromWardByElection = (electionId: string) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsFromWardByElection", { electionId })
+  ] as any;
+
+export const selectAspirantTotalsFromLgaByElection = (electionId: string) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsFromLgaByElection", { electionId })
+  ] as any;
+
+export const selectAspirantTotalsFromStateByElection = (electionId: string) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsFromStateByElection", { electionId })
+  ] as any;
+
+export const selectAspirantTotalsFromPollingUnitByElection = (electionId: string) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsFromPollingUnitByElection", { electionId })
+  ] as any;
+
+export const selectAspirantTotalsByPollingUnitLocal = (
+  electionId: string,
+  pollingUnitId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsByElectionAndPollingUnit", { electionId, pollingUnitId })
+  ] as any;
+
+export const selectStatesCoverage = (electionId: string) => (state: RootState) => {
+  const data = state.results.cache[buildKey("results/getStatesCoverage", { electionId })] as
+    | {
+        entered: number;
+        total: number;
+        aspirantStateWins?: Array<{
+          aspirantId: string;
+          aspirantName: string;
+          aspirantPartyCode: string;
+          statesWon: number;
+        }>;
+      }
+    | undefined;
+  return data ?? null;
+};
+
+export const selectStateCollation = (
+  electionId: string,
+  stateId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getResultsByElectionAndState", { electionId, stateId })
+  ] as { electionId?: string; stateId?: string; results?: any[] } | undefined;
+
+export const selectAspirantTotalsByStateLocal = (
+  electionId: string,
+  stateId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getAspirantTotalsByElectionAndState", { electionId, stateId })
   ] as any;
 
 // Generic: get cached data by thunk + arg

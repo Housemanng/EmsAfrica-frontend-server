@@ -17,22 +17,35 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
+  const [suspendedOrg, setSuspendedOrg] = useState<{ name: string; code: string } | null>(null);
 
   useEffect(() => {
     api
       .get("/tenant-context")
       .then((res) => {
         const data = res.data;
-        if (data?.tenantContext?.organization || data?.organization) {
+        if (data?.suspended && data?.suspendedOrg) {
+          setSuspendedOrg({
+            name: data.suspendedOrg.organizationName ?? "This organization",
+            code: data.suspendedOrg.organizationCode ?? "",
+          });
+          setTenantContext(null);
+        } else if (data?.tenantContext?.organization || data?.organization) {
+          setSuspendedOrg(null);
           setTenantContext({
             organization: data.tenantContext?.organization ?? data.organization,
             state: data.tenantContext?.state ?? data.state ?? null,
           });
         } else if (data?.state) {
+          setSuspendedOrg(null);
           setTenantContext({ state: data.state });
+        } else {
+          setSuspendedOrg(null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setSuspendedOrg(null);
+      });
   }, []);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -49,8 +62,11 @@ export default function Login() {
         id: res._id ?? res.id,
         username: res.firstName ? `${res.firstName} ${res.lastName || ""}`.trim() : res.email ?? res.username ?? "user",
         email: res.email,
-        organization: res.organization ? { _id: res.organization._id, name: res.organization.name } : undefined,
-        state: res.state ? { _id: res.state._id, name: res.state.name } : undefined,
+        organization: res.organization ? { _id: res.organization._id ?? res.organization.id, name: res.organization.name } : undefined,
+        state: res.state ? { _id: res.state._id ?? res.state.id, name: res.state.name } : undefined,
+        lga: res.lga,
+        ward: res.ward,
+        pollingUnit: res.pollingUnit,
       };
       const role = res.role || "user";
 
@@ -95,6 +111,12 @@ export default function Login() {
 
           <h2 className="login-page__heading">Sign in</h2>
 
+          {suspendedOrg ? (
+            <div className="login-page__suspended" role="alert">
+              <p><strong>{suspendedOrg.name}</strong> is currently suspended.</p>
+              <p>Login and signup are disabled. Please contact your administrator.</p>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="login-page__form">
             <div className="login-page__field">
               <div className="login-page__input-wrap">
@@ -146,6 +168,7 @@ export default function Login() {
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+          )}
 
           <p className="login-page__footer">Secure access for authorized agents only</p>
         </div>

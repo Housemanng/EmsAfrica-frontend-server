@@ -9,11 +9,13 @@ import {
   getAspirantTotalsFromStateByElection,
   getResultsOverview,
   getDashboardSummary,
+  getPollingUnitsCoverage,
   exportResultsCsv,
   getMyPartyOverview,
   getMyPartyAreasLosing,
   getMyPartyNeedsAttention,
   getResultsByState,
+  getAspirantTotalsByElectionAndPollingUnit,
   getAspirantTotalsByElectionAndState,
   getResultsByElectionAndState,
   getStateResultByElectionStateAspirant,
@@ -35,6 +37,9 @@ import {
   deleteResult,
   getElections,
   getParties,
+  getWardsCoverage,
+  getLgasCoverage,
+  getStatesCoverage,
 } from "./resultsApi";
 
 const cacheKey = (action: { type: string; meta?: { arg?: unknown } }) => {
@@ -65,11 +70,13 @@ const allThunks = [
   getAspirantTotalsFromStateByElection,
   getResultsOverview,
   getDashboardSummary,
+  getPollingUnitsCoverage,
   exportResultsCsv,
   getMyPartyOverview,
   getMyPartyAreasLosing,
   getMyPartyNeedsAttention,
   getResultsByState,
+  getAspirantTotalsByElectionAndPollingUnit,
   getAspirantTotalsByElectionAndState,
   getResultsByElectionAndState,
   getStateResultByElectionStateAspirant,
@@ -91,6 +98,9 @@ const allThunks = [
   deleteResult,
   getElections,
   getParties,
+  getWardsCoverage,
+  getLgasCoverage,
+  getStatesCoverage,
 ];
 
 const pendingMatcher = isAnyOf(...allThunks.map((t) => t.pending));

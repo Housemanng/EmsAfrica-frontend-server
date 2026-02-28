@@ -6,7 +6,6 @@ import {
   getParties,
   getPollingUnitsCoverage,
   getAspirantTotalsByElection,
-  getResultsByElectionAndPollingUnit,
   enterResultByElectionAndAspirant,
   enterResultByElectionAndWardAndAspirant,
   enterResultByElectionAndLgaAndAspirant,
@@ -17,7 +16,6 @@ import {
   selectElectionsLoading,
   selectPollingUnitsCoverage,
   selectAspirantTotalsByElection,
-  selectResultsByPollingUnit,
 } from "../features/results/resultsSelectors";
 import {
   getElectionsByOrganizationId,
@@ -47,50 +45,6 @@ import {
 } from "../features/pollingUnits/pollingUnitSelectors";
 import "./Results.css";
 
-/* Icons for polling unit and election cards */
-const IconLocation = () => (
-  <svg className="results-pu-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
-const IconClipboard = () => (
-  <svg className="results-pu-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-  </svg>
-);
-const IconPlay = () => (
-  <svg className="results-pu-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polygon points="5 3 19 12 5 21 5 3" />
-  </svg>
-);
-const IconFlag = () => (
-  <svg className="results-pu-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-    <line x1="4" y1="22" x2="4" y2="15" />
-  </svg>
-);
-const IconUserPlus = () => (
-  <svg className="results-pu-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="8.5" cy="7" r="4" />
-    <line x1="20" y1="8" x2="20" y2="14" />
-    <line x1="23" y1="11" x2="17" y2="11" />
-  </svg>
-);
-
-const IconChevronDown = () => (
-  <svg className="results-election-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M6 9l6 6 6-6" />
-  </svg>
-);
-const IconChevronRight = () => (
-  <svg className="results-election-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M9 18l6-6-6-6" />
-  </svg>
-);
-
 type LocationRef = { _id?: string; name?: string } | string;
 const getLocationId = (loc: LocationRef | undefined | null): string | null => {
   if (!loc) return null;
@@ -105,6 +59,8 @@ const AGENT_ROLES = {
   lga_collation_officer_agent: "lga",
   state_constituency_returning_officer_agent: "state",
 } as const;
+const OVERVIEW_ROLES = ["regular", "executive", "superadmin"] as const;
+const isOverviewRole = (r: string) => OVERVIEW_ROLES.includes(r as (typeof OVERVIEW_ROLES)[number]);
 const getAgentLevel = (r: string): keyof typeof AGENT_ROLES | null =>
   r in AGENT_ROLES ? (r as keyof typeof AGENT_ROLES) : null;
 
@@ -120,237 +76,33 @@ type AspirantTotalsShape = {
 function ElectionCoverageBadge({ electionId }: { electionId: string }) {
   const coverage = useSelector(selectPollingUnitsCoverage(electionId));
   if (!coverage || coverage.total === 0) return null;
-  const pct = ((coverage.entered / coverage.total) * 100).toFixed(1);
+  const pct = coverage.total > 0 ? ((coverage.entered / coverage.total) * 100).toFixed(2) : "0";
   const remaining = coverage.total - coverage.entered;
+  const remainingPct = coverage.total > 0 ? (((remaining / coverage.total) * 100).toFixed(2)) : "0";
   return (
     <span className="results-election-card__coverage">
-      {coverage.entered} of {coverage.total} PUs ({pct}%) — {remaining} remaining
+      {coverage.entered} out of {coverage.total} ({pct}%) — {remaining} remaining ({remainingPct}%)
     </span>
   );
 }
 
-type PoCollationResult = {
-  _id: string;
-  votes: number;
-  aspirant: { _id: string; name: string; partyCode?: string };
-};
-
+/** Renders leading aspirant (position, name, votes) for overview roles. Same data source as Election Details modal. */
 function ElectionLeadingBadge({
   aspirantTotals,
-  collationResults,
 }: {
   aspirantTotals?: AspirantTotalsShape | null;
-  collationResults?: PoCollationResult[];
 }) {
   const totalsList = aspirantTotals?.aspirants ?? [];
-  if (totalsList.length > 0) {
-    const leader = totalsList[0];
-    const leaderVotes = leader?.totalVotes ?? 0;
-    if (leaderVotes > 0) {
-      const name = leader?.aspirant?.name ?? "—";
-      const positionLabel = leader?.positionLabel ?? "1st";
-      return (
-        <span className="results-election-card__leading">
-          Leading ({positionLabel}): {name} — {leaderVotes.toLocaleString()} votes
-        </span>
-      );
-    }
-  }
-  if (collationResults && collationResults.length > 0) {
-    const sorted = [...collationResults].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0));
-    const leader = sorted[0];
-    if ((leader?.votes ?? 0) > 0) {
-      return (
-        <span className="results-election-card__leading">
-          Leading: {leader.aspirant?.name ?? "—"} ({leader.aspirant?.partyCode ?? ""}) — {leader.votes.toLocaleString()} votes
-        </span>
-      );
-    }
-  }
-  return null;
-}
-
-function PoElectionCard({
-  el,
-  pollingUnitId,
-  expandedElectionId,
-  onToggle,
-  expandedAspirants,
-  expandedAspirantsLoading,
-  aspirantVotes,
-  accordionSavingId,
-  accordionSavingAll,
-  onVoteChange,
-  onSave,
-  onSaveAll,
-}: {
-  el: { _id: string; name: string; status?: string; aspirantTotals?: AspirantTotalsShape };
-  pollingUnitId: string;
-  expandedElectionId: string | null;
-  onToggle: (id: string) => void;
-  expandedAspirants: Array<{ _id: string; name: string; partyCode?: string; party?: { name?: string; acronym?: string } }> | undefined;
-  expandedAspirantsLoading: boolean;
-  aspirantVotes: Record<string, Record<string, string>>;
-  accordionSavingId: string | null;
-  accordionSavingAll: boolean;
-  onVoteChange: (electionId: string, aspirantId: string, value: string) => void;
-  onSave: (electionId: string, aspirantId: string) => void;
-  onSaveAll: (electionId: string) => void;
-}) {
-  const aspirantTotalsFromStore = useSelector(
-    selectAspirantTotalsByElection(el._id)
-  ) as AspirantTotalsShape | undefined;
-  const aspirantTotals = (aspirantTotalsFromStore?.aspirants?.length ? aspirantTotalsFromStore : el.aspirantTotals) as AspirantTotalsShape | undefined;
-
-  const collationData = useSelector(selectResultsByPollingUnit(el._id, pollingUnitId));
-  const collationResults: PoCollationResult[] = (collationData?.results ?? []) as PoCollationResult[];
-
-  const coverage = useSelector(selectPollingUnitsCoverage(el._id));
-
-  const isExpanded = expandedElectionId === el._id;
-
-  const getCollationEntry = (aspirantId: string) =>
-    collationResults.find((r) => String(r.aspirant?._id) === String(aspirantId));
-
-  const totalFromCollation = collationResults.reduce((sum, r) => sum + (r.votes ?? 0), 0);
-  const totalFromAggregated = (aspirantTotals?.aspirants ?? []).reduce((sum, a) => sum + (a.totalVotes ?? 0), 0);
-  const totalSubmitted = totalFromCollation > 0 ? totalFromCollation : totalFromAggregated;
-
-  // aspirantPollingUnitWins is sorted by pollingUnitsWon desc — first entry is the leader
-  const topPuWinner = coverage?.aspirantPollingUnitWins?.[0] ?? null;
-  const leadingPollingUnitWins = topPuWinner?.pollingUnitsWon ?? null;
-
+  if (totalsList.length === 0) return null;
+  const leader = totalsList[0];
+  const leaderVotes = leader?.totalVotes ?? 0;
+  if (leaderVotes === 0) return null;
+  const name = leader?.aspirant?.name ?? "—";
+  const positionLabel = leader?.positionLabel ?? "1st";
   return (
-    <div className="results-election-card">
-      <button
-        type="button"
-        className={`results-election-card__header ${isExpanded ? "results-election-card__header--open" : ""}`}
-        onClick={() => onToggle(el._id)}
-      >
-        <div className="results-election-card__header-main">
-          <div className="results-election-card__header-top">
-            <span className="results-election-card__title">{el.name}</span>
-            <span className="results-election-card__header-coverage">
-              <ElectionCoverageBadge electionId={el._id} />
-            </span>
-          </div>
-          <div className="results-election-card__header-meta results-election-card__header-meta--spaced">
-            <ElectionLeadingBadge aspirantTotals={aspirantTotals} collationResults={collationResults} />
-            {(totalSubmitted > 0 || leadingPollingUnitWins !== null) && (
-              <span className="results-election-card__total-votes results-election-card__total-votes--right">
-                {totalSubmitted > 0 && <>Total PU votes: {totalSubmitted.toLocaleString()}</>}
-                {leadingPollingUnitWins !== null && (
-                  <span className="results-election-card__ward-wins">
-                    {totalSubmitted > 0 && <>&nbsp;·&nbsp;</>}
-                    Winning {leadingPollingUnitWins} PU
-                    {leadingPollingUnitWins !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
-        </div>
-        <span className="results-election-card__chevron-wrap">
-          {isExpanded ? <IconChevronDown /> : <IconChevronRight />}
-        </span>
-      </button>
-
-      {isExpanded && (
-        <div className="results-election-card__body">
-          {expandedAspirantsLoading ? (
-            <p className="results-view__empty" style={{ margin: 0 }}>Loading aspirants…</p>
-          ) : !expandedAspirants?.length ? (
-            <p className="results-view__empty" style={{ margin: 0 }}>No aspirants for this election.</p>
-          ) : (
-            <>
-              <div className="results-aspirants-list">
-                {expandedAspirants.map((a) => {
-                  const totalsEntry = aspirantTotals?.aspirants?.find(
-                    (t) => String(t.aspirant?._id) === String(a._id)
-                  );
-                  const positionLabel = totalsEntry?.positionLabel ?? null;
-                  const collationEntry = getCollationEntry(a._id);
-                  const submittedVotes = collationEntry?.votes ?? totalsEntry?.totalVotes ?? null;
-                  const partyCode = (
-                    a.partyCode ?? a.party?.acronym ?? collationEntry?.aspirant?.partyCode ?? ""
-                  ).toUpperCase();
-
-                  return (
-                    <div
-                      key={a._id}
-                      className={`results-aspirant-row${submittedVotes !== null ? " results-aspirant-row--submitted" : ""}`}
-                    >
-                      <div className="results-aspirant-row__info">
-                        {partyCode && (
-                          <span className="results-aspirant-row__party">{partyCode}</span>
-                        )}
-                        <span className="results-aspirant-row__name">{a.name}</span>
-                      </div>
-                      <div className="results-aspirant-row__actions">
-                        {(positionLabel || submittedVotes !== null) && (
-                          <div className="results-aspirant-row__meta">
-                            {positionLabel && (
-                              <span className="results-aspirant-row__position">{positionLabel}</span>
-                            )}
-                            {submittedVotes !== null && (
-                              <span className="results-aspirant-row__submitted">
-                                {submittedVotes.toLocaleString()} votes
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <input
-                          type="number"
-                          min={0}
-                          className="results-table__votes-input"
-                          placeholder="0"
-                          value={aspirantVotes[el._id]?.[a._id] ?? ""}
-                          onChange={(e) => onVoteChange(el._id, a._id, e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="results-table__save-btn"
-                          onClick={() => onSave(el._id, a._id)}
-                          disabled={accordionSavingId === a._id || accordionSavingAll}
-                        >
-                          {accordionSavingId === a._id
-                            ? "Saving…"
-                            : submittedVotes !== null
-                            ? "Update"
-                            : "Save"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="results-actions" style={{ marginTop: "1rem" }}>
-                <label className="results-upload-zone">
-                  <span className="results-upload-zone__icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                  </span>
-                  <span className="results-upload-zone__label">Upload result sheet</span>
-                  <span className="results-upload-zone__hint">PDF, JPG or PNG — click to browse</span>
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} />
-                </label>
-                <button
-                  type="button"
-                  className="results-btn results-btn--primary"
-                  onClick={() => onSaveAll(el._id)}
-                  disabled={accordionSavingAll || accordionSavingId !== null}
-                >
-                  {accordionSavingAll ? "Saving…" : "Save all"}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+    <span className="results-election-card__leading">
+      Leading ({positionLabel}): {name} — {leaderVotes.toLocaleString()} votes
+    </span>
   );
 }
 
@@ -394,18 +146,15 @@ export default function Results() {
       : level === "state"
       ? getLocationId(u?.state)
       : null;
-  const showElectionsAccordion = true;
+  const isOverview = isOverviewRole(role);
+  const showElectionsAccordion = !!agentLevel || isOverview;
 
   const electionsFromResults = useSelector(selectElections) ?? [];
   const electionsWithTotals = useSelector(
     selectElectionsByOrganizationId(organizationId ?? "", { includeResults: true })
   ) ?? [];
-  const elections = (electionsWithTotals?.length ? electionsWithTotals : electionsFromResults) ?? electionsFromResults ?? [];
+  const elections = isOverview ? electionsWithTotals : electionsFromResults;
   const electionsLoading = useSelector(selectElectionsLoading);
-
-  const electionsList = (Array.isArray(elections) ? elections : []).filter(
-    (e: { _id?: string; name?: string; status?: string }) => e.status === "active"
-  );
 
   useEffect(() => {
     dispatch(getElections());
@@ -413,37 +162,33 @@ export default function Results() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (organizationId) {
+    if (isOverview && organizationId) {
       dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
     }
-  }, [dispatch, organizationId]);
+  }, [dispatch, isOverview, organizationId]);
 
   useEffect(() => {
     if (expandedElectionId) {
       dispatch(getAspirantsByElection(expandedElectionId));
       dispatch(getAspirantTotalsByElection(expandedElectionId));
-      if (locationIdForRole) {
-        dispatch(getResultsByElectionAndPollingUnit({ electionId: expandedElectionId, pollingUnitId: locationIdForRole }));
-      }
     }
-  }, [dispatch, expandedElectionId, locationIdForRole]);
+  }, [dispatch, expandedElectionId]);
 
+  const electionsList = (elections as Array<{ _id: string; name?: string; status?: string }>).filter(
+    (e) => e.status === "active"
+  );
   useEffect(() => {
     if (!puElectionId && electionsList.length > 0) {
       setPuElectionId(electionsList[0]._id);
     }
   }, [electionsList.length, puElectionId]);
   useEffect(() => {
-    if (electionsList.length > 0) {
+    if (isOverview && electionsList.length > 0) {
       electionsList.forEach((el) => {
         dispatch(getPollingUnitsCoverage({ electionId: el._id }));
-        dispatch(getAspirantTotalsByElection(el._id));
-        if (locationIdForRole) {
-          dispatch(getResultsByElectionAndPollingUnit({ electionId: el._id, pollingUnitId: locationIdForRole }));
-        }
       });
     }
-  }, [dispatch, electionsList.map((e) => e._id).join(","), locationIdForRole]);
+  }, [dispatch, isOverview, electionsList.map((e) => e._id).join(",")]);
 
   const isPO = level === "polling_unit";
   const puViewElectionId = puElectionId;
@@ -451,7 +196,6 @@ export default function Results() {
   const puPresenceParams = puViewElectionId && puViewPollingUnitId
     ? { pollingUnitId: puViewPollingUnitId, electionId: puViewElectionId }
     : null;
-  const presenceParamsForSelector = puPresenceParams ?? { pollingUnitId: "", electionId: "" };
   useEffect(() => {
     if (puPresenceParams) {
       dispatch(listPresence(puPresenceParams));
@@ -469,27 +213,33 @@ export default function Results() {
     }
   }, [dispatch, organizationId, puViewElectionId, puViewPollingUnitId]);
 
-  const presenceData = useSelector(selectListPresence(presenceParamsForSelector));
+  const presenceData = puPresenceParams
+    ? useSelector(selectListPresence(puPresenceParams))
+    : undefined;
   const presenceList = (presenceData?.presence ?? []) as Array<{ user?: { _id?: string } }>;
   const currentUserId = (user as { _id?: string })?._id;
   const hasMarkedPresence =
     !!currentUserId &&
     presenceList.some((p) => String(p.user?._id) === String(currentUserId));
 
-  const accreditationData = useSelector(
-    selectAccreditedVotersByPollingUnit(
-      organizationId || "",
-      puViewPollingUnitId || "",
-      puViewElectionId || ""
-    )
-  );
-  const accreditationLoading = useSelector(
-    selectAccreditedVotersByPollingUnitLoading(
-      organizationId || "",
-      puViewPollingUnitId || "",
-      puViewElectionId || ""
-    )
-  );
+  const accreditationData = organizationId && puViewElectionId && puViewPollingUnitId
+    ? useSelector(
+        selectAccreditedVotersByPollingUnit(
+          organizationId,
+          puViewPollingUnitId,
+          puViewElectionId
+        )
+      )
+    : undefined;
+  const accreditationLoading = organizationId && puViewElectionId && puViewPollingUnitId
+    ? useSelector(
+        selectAccreditedVotersByPollingUnitLoading(
+          organizationId,
+          puViewPollingUnitId,
+          puViewElectionId
+        )
+      )
+    : false;
   const accreditedCount = accreditationData?.accreditedCount ?? null;
   const votingStartedAt = accreditationData?.accreditation?.votingStartedAt;
   const votingEndedAt = accreditationData?.accreditation?.votingEndedAt;
@@ -629,14 +379,7 @@ export default function Results() {
   const handleAccordionToggle = (id: string) => {
     setExpandedElectionId((prev) => (prev === id ? null : id));
     setAccordionMessage(null);
-    if (id) {
-      dispatch(getPollingUnitsCoverage({ electionId: id }));
-      dispatch(getAspirantTotalsByElection(id));
-      dispatch(getAspirantsByElection(id));
-      if (locationIdForRole) {
-        dispatch(getResultsByElectionAndPollingUnit({ electionId: id, pollingUnitId: locationIdForRole }));
-      }
-    }
+    if (isOverview && id) dispatch(getPollingUnitsCoverage({ electionId: id }));
   };
 
   const handleAspirantVoteChange = (electionId: string, aspirantId: string, value: string) => {
@@ -711,11 +454,8 @@ export default function Results() {
         enterResultThunk({ electionId, aspirantId, votes }) as ReturnType<typeof enterResultByElectionAndAspirant>
       ).unwrap();
       setAccordionMessage({ type: "success", text: "Result saved successfully." });
-      dispatch(getPollingUnitsCoverage({ electionId }));
+      if (isOverview) dispatch(getPollingUnitsCoverage({ electionId }));
       dispatch(getAspirantTotalsByElection(electionId));
-      if (locationIdForRole) {
-        dispatch(getResultsByElectionAndPollingUnit({ electionId, pollingUnitId: locationIdForRole }));
-      }
       setAspirantVotes((prev) => ({
         ...prev,
         [electionId]: {
@@ -778,11 +518,8 @@ export default function Results() {
           ? `Saved ${ok} result(s). Error: ${errMsg}`
           : `All ${ok} result(s) saved successfully.`,
       });
-      dispatch(getPollingUnitsCoverage({ electionId }));
+      if (isOverview) dispatch(getPollingUnitsCoverage({ electionId }));
       dispatch(getAspirantTotalsByElection(electionId));
-      if (locationIdForRole) {
-        dispatch(getResultsByElectionAndPollingUnit({ electionId, pollingUnitId: locationIdForRole }));
-      }
       setAspirantVotes((prev) => ({
         ...prev,
         [electionId]: {},
@@ -802,6 +539,9 @@ export default function Results() {
   const expandedAspirantsLoading = useSelector(
     selectAspirantsByElectionLoading(expandedElectionId ?? "")
   );
+  const expandedAspirantTotals = useSelector(
+    selectAspirantTotalsByElection(expandedElectionId ?? "")
+  ) as AspirantTotalsShape | undefined;
 
   return (
     <div className="results-page">
@@ -829,24 +569,21 @@ export default function Results() {
         </div>
       </div>
 
-      {(organizationId || electionsList.length > 0) && (
+      {((isPO && locationIdForRole) || isOverview) && organizationId && (
         <div className="results-card results-pu-upper">
           <h2 className="results-card__heading">Polling Unit – Voting - Presence - Accreditation</h2>
           
           
-          {!puElectionId ? (
+          {!puElectionId && isPO ? (
             <p className="results-view__empty" style={{ margin: 0 }}>Select an election to continue.</p>
           ) : (
             <>
              
               <div className="results-pu-cards">
-                {!hasMarkedPresence && isPO && (
-                  <div className="results-pu-card results-pu-card--mark-presence">
-                    <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--amber">
-                      <IconUserPlus />
-                    </span>
+                {!hasMarkedPresence && isPO ? (
+                  <div className="results-pu-card">
                     <span className="results-pu-card__label">Mark presence</span>
-                    <p className="results-pu-card__hint">Mark presence to enable entry.</p>
+                    <p className="results-pu-card__hint">You must mark presence before other actions.</p>
                     <button
                       type="button"
                       className="results-btn results-btn--primary"
@@ -856,56 +593,50 @@ export default function Results() {
                       {puBusy ? "Marking…" : "Mark presence"}
                     </button>
                   </div>
+                ) : (
+                  <>
+                    <div className="results-pu-card results-pu-card--presence">
+                      <span className="results-pu-card__label">Presence</span>
+                      <span className="results-pu-card__value">{presenceList.length}</span>
+                      <span className="results-pu-card__sublabel">Users at polling unit</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`results-pu-card results-pu-card--clickable ${isOverview ? "results-pu-card--disabled" : ""}`}
+                      onClick={() => {
+                if (!isOverview) {
+                  setAccreditedCountInput(accreditedCount != null ? String(accreditedCount) : "");
+                  setShowAccreditedModal(true);
+                }
+              }}
+                      disabled={isOverview}
+                    >
+                      <span className="results-pu-card__label">Accredited voters</span>
+                      <span className="results-pu-card__value">{accreditedCount ?? "—"}</span>
+                      <span className="results-pu-card__sublabel">{isOverview ? "View only" : "Click to enter"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`results-pu-card results-pu-card--clickable ${votingStartedAt ? "results-pu-card--done" : ""} ${(puBusy || !!votingStartedAt || isOverview) ? "results-pu-card--disabled" : ""}`}
+                      onClick={() => !puBusy && !votingStartedAt && !isOverview && setShowVoteStartConfirm(true)}
+                      disabled={puBusy || !!votingStartedAt || isOverview}
+                    >
+                      <span className="results-pu-card__label">Voting started</span>
+                      <span className="results-pu-card__value">{votingStartedAt ? "✓ Recorded" : "—"}</span>
+                      <span className="results-pu-card__sublabel">{votingStartedAt ? "Completed" : "Click to record"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`results-pu-card results-pu-card--clickable ${votingEndedAt ? "results-pu-card--done" : ""} ${(puBusy || !!votingEndedAt || isOverview) ? "results-pu-card--disabled" : ""}`}
+                      onClick={() => !puBusy && !votingEndedAt && !isOverview && setShowVoteEndConfirm(true)}
+                      disabled={puBusy || !!votingEndedAt || isOverview}
+                    >
+                      <span className="results-pu-card__label">Voting ended</span>
+                      <span className="results-pu-card__value">{votingEndedAt ? "✓ Recorded" : "—"}</span>
+                      <span className="results-pu-card__sublabel">{votingEndedAt ? "Completed" : "Click to record"}</span>
+                    </button>
+                  </>
                 )}
-                <div className="results-pu-card results-pu-card--presence">
-                  <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--blue">
-                    <IconLocation />
-                  </span>
-                  <span className="results-pu-card__label">Presence</span>
-                  <span className="results-pu-card__value">{presenceList.length}</span>
-                  <span className="results-pu-card__sublabel">Users at polling unit</span>
-                </div>
-                <button
-                  type="button"
-                  className="results-pu-card results-pu-card--clickable"
-                  onClick={() => {
-                    setAccreditedCountInput(accreditedCount != null ? String(accreditedCount) : "");
-                    setShowAccreditedModal(true);
-                  }}
-                >
-                  <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--emerald">
-                    <IconClipboard />
-                  </span>
-                  <span className="results-pu-card__label">Accredited voters</span>
-                  <span className="results-pu-card__value">{accreditedCount ?? "—"}</span>
-                  <span className="results-pu-card__sublabel">Click to enter</span>
-                </button>
-                <button
-                  type="button"
-                  className={`results-pu-card results-pu-card--clickable ${votingStartedAt ? "results-pu-card--done" : ""} ${(puBusy || !!votingStartedAt) ? "results-pu-card--disabled" : ""}`}
-                  onClick={() => !puBusy && !votingStartedAt && setShowVoteStartConfirm(true)}
-                  disabled={puBusy || !!votingStartedAt}
-                >
-                  <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--violet">
-                    <IconPlay />
-                  </span>
-                  <span className="results-pu-card__label">Voting started</span>
-                  <span className="results-pu-card__value">{votingStartedAt ? "✓ Recorded" : "—"}</span>
-                  <span className="results-pu-card__sublabel">{votingStartedAt ? "Completed" : "Click to record"}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`results-pu-card results-pu-card--clickable ${votingEndedAt ? "results-pu-card--done" : ""} ${(puBusy || !!votingEndedAt) ? "results-pu-card--disabled" : ""}`}
-                  onClick={() => !puBusy && !votingEndedAt && setShowVoteEndConfirm(true)}
-                  disabled={puBusy || !!votingEndedAt}
-                >
-                  <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--rose">
-                    <IconFlag />
-                  </span>
-                  <span className="results-pu-card__label">Voting ended</span>
-                  <span className="results-pu-card__value">{votingEndedAt ? "✓ Recorded" : "—"}</span>
-                  <span className="results-pu-card__sublabel">{votingEndedAt ? "Completed" : "Click to record"}</span>
-                </button>
               </div>
               {puMessage && (
                 <div className={`results-message results-message--${puMessage.type}`} style={{ marginTop: "1rem" }}>
@@ -1017,12 +748,19 @@ export default function Results() {
         </div>
       )}
 
-      {showElectionsAccordion && electionsList.length > 0 && (
+      {showElectionsAccordion && (isPO ? hasMarkedPresence && puElectionId : true) && (
       <div className="results-card results-elections-section">
         <h2 className="results-card__heading">Elections</h2>
         <p className="results-elections-section__hint">
-          Click an election card to expand and view or enter results for each aspirant.
+          {isOverview
+            ? "Click an election card to expand and view results. Result entry is disabled for your role."
+            : `Click an election card to expand and enter results for each aspirant. Results are saved for your assigned ${level ?? "location"}.`}
         </p>
+        {!isOverview && !locationIdForRole && (
+          <p className="results-message results-message--error" style={{ marginBottom: "1rem" }}>
+            Your account is not assigned to a {level ?? "location"}. Contact an administrator.
+          </p>
+        )}
         {accordionMessage && (
           <div
             className={`results-message results-message--${accordionMessage.type}`}
@@ -1033,21 +771,107 @@ export default function Results() {
         )}
         <div className="results-elections-grid">
           {electionsList.map((el) => (
-            <PoElectionCard
-              key={el._id}
-              el={el}
-              pollingUnitId={locationIdForRole ?? ""}
-              expandedElectionId={expandedElectionId}
-              onToggle={handleAccordionToggle}
-              expandedAspirants={expandedElectionId === el._id ? expandedAspirants : undefined}
-              expandedAspirantsLoading={expandedElectionId === el._id ? expandedAspirantsLoading : false}
-              aspirantVotes={aspirantVotes}
-              accordionSavingId={accordionSavingId}
-              accordionSavingAll={accordionSavingAll}
-              onVoteChange={handleAspirantVoteChange}
-              onSave={handleSaveAspirantResult}
-              onSaveAll={handleSaveAllAspirantResults}
-            />
+            <div key={el._id} className="results-election-card">
+              <button
+                type="button"
+                className={`results-election-card__header ${expandedElectionId === el._id ? "results-election-card__header--open" : ""}`}
+                onClick={() => handleAccordionToggle(el._id)}
+              >
+                <div className="results-election-card__header-main">
+                  <div className="results-election-card__header-top">
+                    <span className="results-election-card__title">{el.name}</span>
+                    {isOverview && (
+                      <span className="results-election-card__header-coverage">
+                        <ElectionCoverageBadge electionId={el._id} />
+                      </span>
+                    )}
+                  </div>
+                  {isOverview && (
+                    <div className="results-election-card__header-meta">
+                      <ElectionLeadingBadge aspirantTotals={(el as { aspirantTotals?: AspirantTotalsShape }).aspirantTotals} />
+                    </div>
+                  )}
+                </div>
+                <span className="results-election-card__chevron">
+                  {expandedElectionId === el._id ? "▼" : "▶"}
+                </span>
+              </button>
+              {expandedElectionId === el._id && (
+                <div className="results-election-card__body">
+                  {expandedAspirantsLoading ? (
+                    <p className="results-view__empty" style={{ margin: 0 }}>Loading aspirants…</p>
+                  ) : !expandedAspirants?.length ? (
+                    <p className="results-view__empty" style={{ margin: 0 }}>No aspirants for this election.</p>
+                  ) : (
+                    <>
+                      <div className="results-aspirants-list">
+                        {expandedAspirants.map((a) => {
+                          const aspirantTotalsForCard = el._id === expandedElectionId
+                            ? (isOverview ? (el as { aspirantTotals?: AspirantTotalsShape }).aspirantTotals : expandedAspirantTotals)
+                            : undefined;
+                          const totalsEntry = aspirantTotalsForCard?.aspirants?.find(
+                            (t) => String(t.aspirant?._id) === String(a._id)
+                          );
+                          const positionLabel = totalsEntry?.positionLabel ?? null;
+                          const totalVotes = totalsEntry?.totalVotes ?? 0;
+                          return (
+                          <div key={a._id} className="results-aspirant-row">
+                            <div className="results-aspirant-row__info">
+                              {(a.partyCode || a.party?.acronym) && (
+                                <span className="results-aspirant-row__party">
+                                  {(a.partyCode ?? a.party?.acronym ?? "").toUpperCase()}
+                                </span>
+                              )}
+                              <span className="results-aspirant-row__name">{a.name}</span>
+                            </div>
+                            <div className="results-aspirant-row__actions">
+                              {(positionLabel != null || totalVotes > 0) && (
+                                <div className="results-aspirant-row__meta">
+                                  {positionLabel && (
+                                    <span className="results-aspirant-row__position">{positionLabel}</span>
+                                  )}
+                                  <span className="results-aspirant-row__votes">
+                                    {totalVotes.toLocaleString()} votes
+                                  </span>
+                                </div>
+                              )}
+                              <input
+                                type="number"
+                                min={0}
+                                className="results-table__votes-input"
+                                placeholder="0"
+                                value={aspirantVotes[el._id]?.[a._id] ?? ""}
+                                onChange={(e) => handleAspirantVoteChange(el._id, a._id, e.target.value)}
+                                readOnly={isOverview}
+                              />
+                              <button
+                                type="button"
+                                className="results-table__save-btn"
+                                onClick={() => handleSaveAspirantResult(el._id, a._id)}
+                                disabled={accordionSavingId === a._id || accordionSavingAll || isOverview}
+                              >
+                                {accordionSavingId === a._id ? "Saving…" : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                          );
+                        })}
+                      </div>
+                      <div className="results-actions" style={{ marginTop: "1rem" }}>
+                        <button
+                          type="button"
+                          className="results-btn results-btn--primary"
+                          onClick={() => handleSaveAllAspirantResults(el._id)}
+                          disabled={accordionSavingAll || accordionSavingId !== null || isOverview}
+                        >
+                          {accordionSavingAll ? "Saving…" : "Save all"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
         {electionsList.length === 0 && !electionsLoading && (

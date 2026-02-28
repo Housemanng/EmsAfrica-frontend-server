@@ -1,11 +1,18 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
+/** Location reference for agent assignment (polling unit, ward, lga, state) */
+export type LocationRef = { _id?: string; id?: string; name?: string; code?: string } | string;
+
 export interface AuthUser {
   id: string;
   username: string;
   email?: string;
   organization?: { _id?: string; id?: string; name: string };
   state?: { _id?: string; name: string };
+  /** Agent locations – required for PO/ward/LGA/state agents. Populated by backend. */
+  lga?: LocationRef;
+  ward?: LocationRef;
+  pollingUnit?: LocationRef;
 }
 
 interface AuthState {

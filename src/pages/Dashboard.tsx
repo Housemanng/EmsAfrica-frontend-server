@@ -32,8 +32,11 @@ import {
   selectUsersByPollingUnitId,
   selectUsersByPollingUnitIdLoading,
 } from "../features/user/userSelectors";
+import { selectRole } from "../features/auth/authSelectors";
 import SearchableSelect from "../components/SearchableSelect";
 import "./Dashboard.css";
+
+const OVERVIEW_ROLES = ["superadmin", "executive", "regular"];
 
 /* eslint-disable max-len */
 const IconChevronCard = () => (
@@ -93,6 +96,9 @@ const STATE_LEVEL_ROLES = ["state_constituency_returning_officer_agent", "state_
 const LGA_COLLATION_ROLE = "lga_collation_officer_agent";
 /** Ward collation: state + lga + ward (no pollingUnit) */
 const WARD_COLLATION_ROLE = "ra_ward_collation_officer_agent";
+
+/** Stable empty array for selectors to avoid "different result" rerender warnings */
+const EMPTY_OPTIONS: { _id?: string; name?: string; code?: string }[] = [];
 
 const formatRoleLabel = (role?: string) =>
   role ? role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—";
@@ -165,17 +171,18 @@ export default function Dashboard() {
   const organizationName = useSelector((state: RootState) => state.auth.user?.organization?.name);
   const stateName = useSelector((state: RootState) => state.auth.user?.state?.name);
   const organizationId = useSelector((state: RootState) => state.auth.user?.organization?._id ?? state.auth.user?.organization?.id);
+  const role = useSelector(selectRole) ?? "";
   const orgStates = useSelector(selectStatesByOrganizationId(organizationId ?? ""));
   const orgUsers = useSelector((state: RootState) =>
     selectUsersByOrganizationId(organizationId ?? "")(state)
   ) as OrgUser[] | undefined;
 
   useEffect(() => {
-    if (organizationId) {
+    if (organizationId && OVERVIEW_ROLES.includes(role)) {
       dispatch(getStatesByOrganizationId(organizationId));
       dispatch(getUsersByOrganizationId(organizationId));
     }
-  }, [dispatch, organizationId]);
+  }, [dispatch, organizationId, role]);
 
   const selectedRole = createUserForm.role;
   const needsState = !ORG_LEVEL_ROLES.includes(selectedRole);
@@ -185,11 +192,11 @@ export default function Dashboard() {
 
   const createLgas = useSelector(
     (s: RootState) =>
-      (selectLGAsByState(createUserForm.state)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? []
+      (selectLGAsByState(createUserForm.state)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_OPTIONS
   );
   const createWards = useSelector(
     (s: RootState) =>
-      (selectWardsByLGA(createUserForm.lga)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? []
+      (selectWardsByLGA(createUserForm.lga)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_OPTIONS
   );
   const createPollingUnitsRaw = useSelector((s: RootState) =>
     selectPollingUnitsByWard(organizationId ?? "", createUserForm.ward)(s)
@@ -293,7 +300,7 @@ export default function Dashboard() {
   const puAssignedUsers = puUsersPayload?.users ?? [];
 
   const refetchUsers = () => {
-    if (organizationId) dispatch(getUsersByOrganizationId(organizationId));
+    if (organizationId && OVERVIEW_ROLES.includes(role)) dispatch(getUsersByOrganizationId(organizationId));
   };
 
   const handleOpenCreateUser = async () => {
