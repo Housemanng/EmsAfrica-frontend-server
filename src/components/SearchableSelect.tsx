@@ -64,6 +64,7 @@ export default function SearchableSelect({
         role="combobox"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
+        aria-required={required}
       >
         {isOpen ? (
           <input
