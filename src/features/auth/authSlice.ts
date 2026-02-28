@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string;
   username: string;
   email?: string;
+  photo?: string;
   organization?: { _id?: string; id?: string; name: string };
   state?: { _id?: string; name: string };
   /** Agent locations – required for PO/ward/LGA/state agents. Populated by backend. */
@@ -71,8 +72,15 @@ const authSlice = createSlice({
         localStorage.removeItem("token");
       }
     },
+
+    /** Merge partial user data (e.g. photo from profile fetch) into auth state. */
+    updateUser: (state, action: PayloadAction<Partial<AuthUser>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
   },
 });
 
-export const { setCredentials, logout, restoreFromStorage } = authSlice.actions;
+export const { setCredentials, logout, restoreFromStorage, updateUser } = authSlice.actions;
 export default authSlice.reducer;

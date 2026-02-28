@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { logout } from "../features/auth/authSlice";
+import { logout, updateUser } from "../features/auth/authSlice";
 import type { RootState } from "../app/store";
 import UserDetailsModal from "../components/UserDetailsModal";
+import api from "../config/apiConfig";
 import "./Layout.css";
 
 /* eslint-disable max-len */
@@ -210,6 +211,49 @@ export default function Layout() {
 
   const initials = user?.username?.slice(0, 2).toUpperCase() || "U";
 
+  const token = useSelector((state: RootState) => state.auth.token);
+
+  useEffect(() => {
+    if (!user?.id || !token) return;
+    api
+      .get(`/users/${user.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        const data = res.data;
+        if (data?.photo !== undefined) {
+          dispatch(updateUser({ photo: data.photo }));
+          const raw = localStorage.getItem("userAuth");
+          if (raw) {
+            try {
+              const stored = JSON.parse(raw) as { user?: { photo?: string }; token?: string; role?: string };
+              if (stored.user) {
+                stored.user = { ...stored.user, photo: data.photo };
+                localStorage.setItem("userAuth", JSON.stringify(stored));
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      })
+      .catch(() => {});
+  }, [user?.id, token, dispatch]);
+
+  const handlePhotoError = () => {
+    dispatch(updateUser({ photo: undefined }));
+    const raw = localStorage.getItem("userAuth");
+    if (raw) {
+      try {
+        const stored = JSON.parse(raw) as { user?: { photo?: string } };
+        if (stored.user && stored.user.photo) {
+          stored.user = { ...stored.user, photo: undefined };
+          localStorage.setItem("userAuth", JSON.stringify(stored));
+        }
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   const closeSidebar = () => setSidebarOpen(false);
 
   const isOverviewRole = role === "executive" || role === "regular" || role === "superadmin";
@@ -402,49 +446,75 @@ export default function Layout() {
 
       <main className="dash-main">
         <header className="dash-header">
-          <h2 className="dash-header__greeting">
-            Good{" "}
-            {new Date().getHours() < 12
-              ? "morning"
-              : new Date().getHours() < 18
-                ? "afternoon"
-                : "evening"}
-            , {user?.username || "User"}!
-          </h2>
-          <div className="dash-header__actions">
-            <button
-              type="button"
-              className="dash-header__btn"
-              aria-label="Notifications"
-            >
-              <IconBell />
-            </button>
+          <div className="dash-header__avatar-top" aria-hidden>
             <div
               className="dash-header__avatar"
               title={user?.username || "User"}
             >
-              {initials}
+              {user?.photo ? (
+                <img
+                  src={user.photo}
+                  alt=""
+                  onError={handlePhotoError}
+                />
+              ) : (
+                initials
+              )}
             </div>
-            <button
-              type="button"
-              className="dash-header__btn"
-              onClick={handleLogout}
-              aria-label="Logout"
-              title="Logout"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                width="18"
-                height="18"
+          </div>
+          <div className="dash-header__row">
+            <h2 className="dash-header__greeting">
+              Good{" "}
+              {new Date().getHours() < 12
+                ? "morning"
+                : new Date().getHours() < 18
+                  ? "afternoon"
+                  : "evening"}
+              , {user?.username || "User"}!
+            </h2>
+            <div className="dash-header__actions">
+              <button
+                type="button"
+                className="dash-header__btn"
+                aria-label="Notifications"
               >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </button>
+                <IconBell />
+              </button>
+              <div
+                className="dash-header__avatar dash-header__avatar--desktop"
+                title={user?.username || "User"}
+              >
+                {user?.photo ? (
+                  <img
+                    src={user.photo}
+                    alt=""
+                    onError={handlePhotoError}
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
+              <button
+                type="button"
+                className="dash-header__btn"
+                onClick={handleLogout}
+                aria-label="Logout"
+                title="Logout"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  width="18"
+                  height="18"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </header>
         <div className="dash-content">

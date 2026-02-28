@@ -64,6 +64,7 @@ export default function Login() {
         id: res._id ?? res.id,
         username: res.firstName ? `${res.firstName} ${res.lastName || ""}`.trim() : res.email ?? res.username ?? "user",
         email: res.email,
+        photo: res.photo,
         organization: res.organization ? { _id: res.organization._id ?? res.organization.id, name: res.organization.name } : undefined,
         state: res.state ? { _id: res.state._id ?? res.state.id, name: res.state.name } : undefined,
         lga: res.lga,
