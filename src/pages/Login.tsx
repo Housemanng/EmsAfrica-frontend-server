@@ -95,6 +95,11 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-page__grid" aria-hidden />
+      {tenantContext?.party?.logo && (
+        <div className="login-page__bg-logo" aria-hidden>
+          <img src={tenantContext.party.logo} alt="" />
+        </div>
+      )}
 
       <div className="login-page__container">
         {tenantContext?.organization?.name && (
@@ -118,9 +123,9 @@ export default function Login() {
               </div>
             )}
             <div className="login-page__org-banner">
-              {tenantContext.organization.name}
+              <div>{tenantContext.organization.name}</div>
               {tenantContext.state?.name && (
-                <span className="login-page__org-state"> — {tenantContext.state.name}</span>
+                <div className="login-page__org-state">{tenantContext.state.name}</div>
               )}
             </div>
           </div>

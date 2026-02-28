@@ -22,7 +22,26 @@
   background-size: 48px 48px;
 }
 
+.login-page__bg-logo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-page__bg-logo img {
+  max-width: 45%;
+  max-height: 45%;
+  object-fit: contain;
+  opacity: 0.06;
+}
+
 .login-page__main-footer {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   padding: 0.5rem;
   text-align: center;
@@ -32,6 +51,7 @@
 
 .login-page__container {
   position: relative;
+  z-index: 1;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -67,6 +87,13 @@
 
 .login-page__org-top .login-page__org-banner {
   margin: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.login-page__org-top .login-page__org-state {
+  font-size: 0.85em;
+  margin-top: 0.15rem;
 }
 
 .login-page__card {
