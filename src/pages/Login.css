@@ -35,10 +35,26 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
   max-width: 28rem;
+}
+
+.login-page__org-logo-top {
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.login-page__org-logo-top .login-page__org-logo,
+.login-page__org-logo-top .login-page__org-logo-placeholder {
+  width: 4rem;
+  height: 4rem;
+}
+
+.login-page__org-logo-top .login-page__org-logo-placeholder {
+  font-size: 0.9rem;
 }
 
 .login-page__card {
