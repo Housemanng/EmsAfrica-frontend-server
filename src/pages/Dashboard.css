@@ -348,11 +348,25 @@
   color: #9ca3af;
 }
 
+.dash-feature__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .dash-feature__title {
   font-size: 1rem;
   font-weight: 600;
   color: #111827;
   margin: 0;
+}
+
+.dash-feature__value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  flex-shrink: 0;
 }
 
 .dash-feature__desc {

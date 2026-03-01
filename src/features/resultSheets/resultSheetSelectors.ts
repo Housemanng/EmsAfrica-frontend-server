@@ -11,6 +11,10 @@ export const selectCached = (key: string) => (state: RootState) => state.resultS
 export const selectLoading = (key: string) => (state: RootState) => state.resultSheets.loading[key] ?? false;
 export const selectError = (key: string) => (state: RootState) => state.resultSheets.error[key] ?? null;
 
+// All sheets for an election (user-accessible, overview roles)
+export const selectSheetsByElectionForUsers = (electionId: string) => (state: RootState) =>
+  state.resultSheets.cache[buildKey("resultSheets/getSheetsByElectionForUsers", electionId)] as any[] | undefined;
+
 // Convenience selectors
 export const selectSheetsByElection = (
   electionId: string,

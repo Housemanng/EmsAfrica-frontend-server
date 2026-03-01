@@ -172,6 +172,13 @@
   margin: 0;
 }
 
+.dash-header__phone {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: black;
+  margin: 0;
+}
+
 .dash-header__actions {
   display: flex;
   align-items: center;

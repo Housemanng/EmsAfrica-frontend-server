@@ -35,10 +35,16 @@ export const uploadResultSheetByPollingUnit = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     try {
+      const isFormData = params.payload instanceof FormData;
+      const authHeaders = getAuthHeaders(getState);
       const res = await api.post(
         `/result-sheets/election/${params.electionId}/polling-unit/${params.pollingUnitId}`,
         params.payload,
-        { headers: getAuthHeaders(getState) }
+        {
+          headers: isFormData
+            ? { ...authHeaders, "Content-Type": undefined }
+            : authHeaders,
+        }
       );
       return res.data;
     } catch (e: any) {
@@ -56,10 +62,16 @@ export const uploadResultSheetByWard = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     try {
+      const isFormData = params.payload instanceof FormData;
+      const authHeaders = getAuthHeaders(getState);
       const res = await api.post(
         `/result-sheets/election/${params.electionId}/ward/${params.wardId}`,
         params.payload,
-        { headers: getAuthHeaders(getState) }
+        {
+          headers: isFormData
+            ? { ...authHeaders, "Content-Type": undefined }
+            : authHeaders,
+        }
       );
       return res.data;
     } catch (e: any) {
@@ -77,10 +89,16 @@ export const uploadResultSheetByLga = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     try {
+      const isFormData = params.payload instanceof FormData;
+      const authHeaders = getAuthHeaders(getState);
       const res = await api.post(
         `/result-sheets/election/${params.electionId}/lga/${params.lgaId}`,
         params.payload,
-        { headers: getAuthHeaders(getState) }
+        {
+          headers: isFormData
+            ? { ...authHeaders, "Content-Type": undefined }
+            : authHeaders,
+        }
       );
       return res.data;
     } catch (e: any) {
@@ -98,10 +116,16 @@ export const uploadResultSheetByState = createAsyncThunk(
     { getState, rejectWithValue }
   ) => {
     try {
+      const isFormData = params.payload instanceof FormData;
+      const authHeaders = getAuthHeaders(getState);
       const res = await api.post(
         `/result-sheets/election/${params.electionId}/state/${params.stateId}`,
         params.payload,
-        { headers: getAuthHeaders(getState) }
+        {
+          headers: isFormData
+            ? { ...authHeaders, "Content-Type": undefined }
+            : authHeaders,
+        }
       );
       return res.data;
     } catch (e: any) {
@@ -130,6 +154,24 @@ export const scanResultSheet = createAsyncThunk(
 );
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
+/** Get all sheets for an election — user-accessible, scoped to org. For overview roles (regular/executive/superadmin). */
+export const getSheetsByElectionForUsers = createAsyncThunk(
+  "resultSheets/getSheetsByElectionForUsers",
+  async (electionId: string, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(
+        `/result-sheets/election/${electionId}`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get result sheets"
+      );
+    }
+  }
+);
+
 /** Get sheets by election. Query: pollingUnitId?, wardId?, lgaId?, stateId? */
 export const getSheetsByElection = createAsyncThunk(
   "resultSheets/getSheetsByElection",

@@ -8,6 +8,24 @@ const getAuthHeaders = (getState: () => unknown) => {
 };
 
 // ─── User-accessible routes (protect) ─────────────────────────────────────────
+/** GET /polling-units/organization/:organizationId/stats – total, assigned, remaining */
+export const getPollingUnitStatsByOrganization = createAsyncThunk(
+  "pollingUnits/getPollingUnitStatsByOrganization",
+  async (organizationId: string, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(
+        `/polling-units/organization/${organizationId}/stats`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data as { total: number; assigned: number; remaining: number };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get polling unit stats"
+      );
+    }
+  }
+);
+
 export const getUsersByPollingUnitId = createAsyncThunk(
   "pollingUnits/getUsersByPollingUnitId",
   async (
@@ -43,6 +61,47 @@ export const getPollingUnitsByWard = createAsyncThunk(
     } catch (e: any) {
       return rejectWithValue(
         e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get polling units by ward"
+      );
+    }
+  }
+);
+
+export const getOverVotingByOrganization = createAsyncThunk(
+  "pollingUnits/getOverVotingByOrganization",
+  async (
+    params: { organizationId: string; electionId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.get(
+        `/polling-units/organization/${params.organizationId}/election/${params.electionId}/over-voting`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data as {
+        organizationId: string;
+        electionId: string;
+        total: number;
+        overVotingUnits: Array<{
+          pollingUnitId: string;
+          pollingUnitName: string;
+          pollingUnitCode: string;
+          accreditedCount: number;
+          totalVotesCast: number;
+          excess: number;
+          agent: { name: string; phone: string; email: string; role: string } | null;
+          aspirants: Array<{
+            aspirantId: string;
+            aspirantName: string;
+            partyCode: string;
+            votes: number;
+            partyLogo: string | null;
+            partyColor: string | null;
+          }>;
+        }>;
+      };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get over-voting data"
       );
     }
   }
@@ -87,6 +146,50 @@ export const getAccreditedVotersByPollingUnit = createAsyncThunk(
     } catch (e: any) {
       return rejectWithValue(
         e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get accredited voters"
+      );
+    }
+  }
+);
+
+/** POST /elections/:electionId/accreditation/start – Record that accreditation has started at a polling unit. */
+export const startAccreditationAtPollingUnit = createAsyncThunk(
+  "pollingUnits/startAccreditationAtPollingUnit",
+  async (
+    params: { electionId: string; pollingUnitId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.post(
+        `/elections/${params.electionId}/accreditation/start`,
+        { pollingUnitId: params.pollingUnitId },
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to start accreditation"
+      );
+    }
+  }
+);
+
+/** POST /elections/:electionId/accreditation/end – Record that accreditation has ended at a polling unit. */
+export const endAccreditationAtPollingUnit = createAsyncThunk(
+  "pollingUnits/endAccreditationAtPollingUnit",
+  async (
+    params: { electionId: string; pollingUnitId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.post(
+        `/elections/${params.electionId}/accreditation/end`,
+        { pollingUnitId: params.pollingUnitId },
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to end accreditation"
       );
     }
   }

@@ -7,7 +7,24 @@ const getAuthHeaders = (getState: () => unknown) => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// ─── GET ─────────────────────────────────────────────────────────────────────
+/** GET /wards/organization/:organizationId/stats – total, assigned, remaining */
+export const getWardStatsByOrganization = createAsyncThunk(
+  "wards/getWardStatsByOrganization",
+  async (organizationId: string, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(
+        `/wards/organization/${organizationId}/stats`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data as { total: number; assigned: number; remaining: number };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get ward stats"
+      );
+    }
+  }
+);
+
 export const getAllWards = createAsyncThunk(
   "wards/getAllWards",
   async (_, { getState, rejectWithValue }) => {

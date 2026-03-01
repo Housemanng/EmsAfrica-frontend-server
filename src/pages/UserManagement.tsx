@@ -8,10 +8,25 @@ import {
   selectStatesByOrganizationIdLoading,
   selectStatesByOrganizationIdError,
 } from "../features/states";
-import { getLGAsByState, selectLGAsByState } from "../features/lgas";
-import { getWardsByLGA, selectWardsByLGA } from "../features/wards";
 import {
+  getLGAStatsByOrganization,
+  getLGAsByState,
+  selectLGAsByState,
+  selectLGAStatsByOrganization,
+  selectLGAStatsByOrganizationLoading,
+} from "../features/lgas";
+import {
+  getWardStatsByOrganization,
+  getWardsByLGA,
+  selectWardsByLGA,
+  selectWardStatsByOrganization,
+  selectWardStatsByOrganizationLoading,
+} from "../features/wards";
+import {
+  getPollingUnitStatsByOrganization,
   getPollingUnitsByWard,
+  selectPollingUnitStatsByOrganization,
+  selectPollingUnitStatsByOrganizationLoading,
   selectPollingUnitsByWard,
 } from "../features/pollingUnits";
 import {
@@ -71,6 +86,9 @@ const IconTrash = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
 );
 /* eslint-enable max-len */
+
+/** Stable empty array for selector fallbacks (avoids "different result" rerender warning). */
+const EMPTY_LOCATION_ARRAY: { _id?: string; name?: string; code?: string }[] = [];
 
 /** Fallback roles if API fails. */
 const DEFAULT_CREATE_ROLES = [
@@ -208,11 +226,32 @@ export default function UserManagement() {
   const orgUsersLoading = useSelector((state: RootState) =>
     selectUsersByOrganizationIdLoading(organizationId ?? "")(state)
   );
+  const puStats = useSelector(
+    (state: RootState) => selectPollingUnitStatsByOrganization(organizationId ?? "")(state)
+  );
+  const puStatsLoading = useSelector(
+    (state: RootState) => selectPollingUnitStatsByOrganizationLoading(organizationId ?? "")(state)
+  );
+  const lgaStats = useSelector(
+    (state: RootState) => selectLGAStatsByOrganization(organizationId ?? "")(state)
+  );
+  const lgaStatsLoading = useSelector(
+    (state: RootState) => selectLGAStatsByOrganizationLoading(organizationId ?? "")(state)
+  );
+  const wardStats = useSelector(
+    (state: RootState) => selectWardStatsByOrganization(organizationId ?? "")(state)
+  );
+  const wardStatsLoading = useSelector(
+    (state: RootState) => selectWardStatsByOrganizationLoading(organizationId ?? "")(state)
+  );
 
   useEffect(() => {
     if (organizationId) {
       dispatch(getStatesByOrganizationId(organizationId));
       dispatch(getUsersByOrganizationId(organizationId));
+      dispatch(getPollingUnitStatsByOrganization(organizationId));
+      dispatch(getLGAStatsByOrganization(organizationId));
+      dispatch(getWardStatsByOrganization(organizationId));
     }
   }, [dispatch, organizationId]);
 
@@ -224,11 +263,11 @@ export default function UserManagement() {
 
   const createLgas = useSelector(
     (s: RootState) =>
-      (selectLGAsByState(createUserForm.state)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? []
+      (selectLGAsByState(createUserForm.state)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_LOCATION_ARRAY
   );
   const createWards = useSelector(
     (s: RootState) =>
-      (selectWardsByLGA(createUserForm.lga)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? []
+      (selectWardsByLGA(createUserForm.lga)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_LOCATION_ARRAY
   );
   const createPollingUnitsRaw = useSelector((s: RootState) =>
     selectPollingUnitsByWard(organizationId ?? "", createUserForm.ward)(s)
@@ -332,7 +371,12 @@ export default function UserManagement() {
   const puAssignedUsers = puUsersPayload?.users ?? [];
 
   const refetchUsers = () => {
-    if (organizationId) dispatch(getUsersByOrganizationId(organizationId));
+    if (organizationId) {
+      dispatch(getUsersByOrganizationId(organizationId));
+      dispatch(getPollingUnitStatsByOrganization(organizationId));
+      dispatch(getLGAStatsByOrganization(organizationId));
+      dispatch(getWardStatsByOrganization(organizationId));
+    }
   };
 
   const filteredStates = (orgStates ?? []).filter(
@@ -676,8 +720,18 @@ export default function UserManagement() {
         </div>
         <div className="dash-card">
           <h3 className="dash-card__title">Polling Units</h3>
-          <p className="dash-card__value">1,247</p>
-          <p className="dash-card__meta">Last Update: 2hrs ago</p>
+          <p className="dash-card__value">
+            {puStatsLoading ? "—" : (puStats?.total ?? 0).toLocaleString()}
+          </p>
+          <p className="dash-card__meta">
+            {puStatsLoading ? "Loading…" : (
+              <>
+                <span className="dash-card__meta-assigned">{(puStats?.assigned ?? 0).toLocaleString()} assigned</span>
+                {" · "}
+                <span className="dash-card__meta-remaining">{(puStats?.remaining ?? 0).toLocaleString()} remaining</span>
+              </>
+            )}
+          </p>
           <div className="dash-card__row">
             <span />
             <IconChevronCard />
@@ -706,32 +760,78 @@ export default function UserManagement() {
             <IconUsers />
             <IconChevronFeature />
           </div>
-          <h3 className="dash-feature__title">Agents</h3>
-          <p className="dash-feature__desc">{(orgUsers ?? []).length} Agent{(orgUsers ?? []).length !== 1 ? "s" : ""} in this organization</p>
+          <div className="dash-feature__title-row">
+            <h3 className="dash-feature__title">LGA</h3>
+            <span className="dash-feature__value">
+              {lgaStatsLoading ? "—" : (lgaStats?.total ?? 0).toLocaleString()}
+            </span>
+          </div>
+          <p className="dash-feature__desc">
+            {lgaStatsLoading ? (
+              "Loading..."
+            ) : (
+              <>
+                {(lgaStats?.assigned ?? 0).toLocaleString()} assigned · {(lgaStats?.remaining ?? 0).toLocaleString()} remaining
+              </>
+            )}
+          </p>
         </a>
         <a href="#states-table" className="dash-feature">
           <div className="dash-feature__row">
             <IconMapPin />
             <IconChevronFeature />
           </div>
-          <h3 className="dash-feature__title">States</h3>
-          <p className="dash-feature__desc">View states under this organization</p>
+          <div className="dash-feature__title-row">
+            <h3 className="dash-feature__title">Wards</h3>
+            <span className="dash-feature__value">
+              {wardStatsLoading ? "—" : (wardStats?.total ?? 0).toLocaleString()}
+            </span>
+          </div>
+          <p className="dash-feature__desc">
+            {wardStatsLoading ? (
+              "Loading..."
+            ) : (
+              <>
+                {(wardStats?.assigned ?? 0).toLocaleString()} assigned · {(wardStats?.remaining ?? 0).toLocaleString()} remaining
+              </>
+            )}
+          </p>
         </a>
         <a href="#reports" className="dash-feature">
           <div className="dash-feature__row">
             <IconFile />
             <IconChevronFeature />
           </div>
-          <h3 className="dash-feature__title">Reports</h3>
-          <p className="dash-feature__desc">Create and view election reports</p>
+          <div className="dash-feature__title-row">
+            <h3 className="dash-feature__title">Polling Units</h3>
+            <span className="dash-feature__value">
+              {puStatsLoading ? "—" : (puStats?.total ?? 0).toLocaleString()}
+            </span>
+          </div>
+          <p className="dash-feature__desc">
+            {puStatsLoading ? (
+              "Loading..."
+            ) : (
+              <>
+                {(puStats?.assigned ?? 0).toLocaleString()} assigned · {(puStats?.remaining ?? 0).toLocaleString()} remaining
+              </>
+            )}
+          </p>
         </a>
         <a href="#results" className="dash-feature">
           <div className="dash-feature__row">
             <IconBarChart />
             <IconChevronFeature />
           </div>
-          <h3 className="dash-feature__title">Results</h3>
-          <p className="dash-feature__desc">Collate and manage result sheets</p>
+          <div className="dash-feature__title-row">
+            <h3 className="dash-feature__title">Admins</h3>
+            <span className="dash-feature__value">
+              {((roleCounts["executive"] ?? 0) + (roleCounts["regular"] ?? 0) + (roleCounts["superadmin"] ?? 0)).toLocaleString()}
+            </span>
+          </div>
+          <p className="dash-feature__desc">
+            {(roleCounts["executive"] ?? 0)} Executive · {(roleCounts["regular"] ?? 0)} Regular · {(roleCounts["superadmin"] ?? 0)} Super Admin
+          </p>
         </a>
       </div>
 

@@ -64,6 +64,7 @@ export default function Login() {
         id: res._id ?? res.id,
         username: res.firstName ? `${res.firstName} ${res.lastName || ""}`.trim() : res.email ?? res.username ?? "user",
         email: res.email,
+        phoneNumber: res.phoneNumber,
         photo: res.photo,
         organization: res.organization ? { _id: res.organization._id ?? res.organization.id, name: res.organization.name } : undefined,
         state: res.state ? { _id: res.state._id ?? res.state.id, name: res.state.name } : undefined,
@@ -79,7 +80,12 @@ export default function Login() {
       }
       dispatch(setCredentials({ token: res.token, role, user, party }));
 
-      navigate("/dashboard");
+      const overviewRoles = ["executive", "regular", "superadmin"];
+      if (overviewRoles.includes(role)) {
+        navigate("/dashboard");
+      } else {
+        navigate("/accreditation");
+      }
     } catch (err: unknown) {
       console.error("Login failed:", err);
       const message = err && typeof err === "object" && "response" in err

@@ -20,7 +20,7 @@ export const selectListPresence = (params: Record<string, unknown> = {}) => (
 ) =>
   state.presence.cache[
     buildKey("presence/listPresence", params)
-  ] as { presence: unknown[]; cutoff: string } | undefined;
+  ] as { presence: unknown[]; count?: number } | undefined;
 
 export const selectListPresenceLoading = (params: Record<string, unknown> = {}) => (
   state: RootState
@@ -31,6 +31,46 @@ export const selectListPresenceError = (params: Record<string, unknown> = {}) =>
   state: RootState
 ) =>
   state.presence.error[buildKey("presence/listPresence", params)] ?? null;
+
+export const selectPresenceReport = (params: {
+  organizationId: string;
+  electionId: string;
+  query?: { stateId?: string; lgaId?: string; wardId?: string };
+}) => (state: RootState) =>
+  state.presence.cache[
+    buildKey("presence/getPresenceReport", params)
+  ] as {
+    organizationId: string;
+    electionId: string;
+    summary: { total: number; present: number; notPresent: number; votingStarted: number; votingEnded: number };
+    rows: Array<{
+      pollingUnitId: string;
+      pollingUnitName: string;
+      pollingUnitCode: string;
+      wardName: string;
+      lgaName: string;
+      poAgentName: string;
+      poPhoneNumber: string;
+      presence: string;
+      presenceCheckedInAt?: string | null;
+      accreditedCount: number | null;
+      votingStarted: string;
+      votingEnded: string;
+      accreditationStarted: boolean;
+      accreditationEnded: boolean;
+      votingStartedAt?: string;
+      votingEndedAt?: string;
+      accreditationStartedAt?: string;
+      accreditationEndedAt?: string;
+    }>;
+  } | undefined;
+
+export const selectPresenceReportLoading = (params: {
+  organizationId: string;
+  electionId: string;
+  query?: { stateId?: string; lgaId?: string; wardId?: string };
+}) => (state: RootState) =>
+  state.presence.loading[buildKey("presence/getPresenceReport", params)] ?? false;
 
 export const selectCheckInResult = (
   pollingUnitId: string,

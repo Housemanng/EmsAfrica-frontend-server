@@ -12,6 +12,15 @@ export const selectLoading = (key: string) => (state: RootState) => state.pollin
 export const selectError = (key: string) => (state: RootState) => state.pollingUnits.error[key] ?? null;
 
 // User-accessible
+export const selectPollingUnitStatsByOrganization = (organizationId: string) => (state: RootState) =>
+  state.pollingUnits.cache[
+    buildKey("pollingUnits/getPollingUnitStatsByOrganization", organizationId)
+  ] as { total: number; assigned: number; remaining: number } | undefined;
+export const selectPollingUnitStatsByOrganizationLoading = (organizationId: string) => (state: RootState) =>
+  state.pollingUnits.loading[
+    buildKey("pollingUnits/getPollingUnitStatsByOrganization", organizationId)
+  ] ?? false;
+
 export const selectUsersByPollingUnitId = (
   organizationId: string,
   pollingUnitId: string
@@ -40,6 +49,43 @@ export const selectPollingUnitsByWardLoading = (
 ) => (state: RootState) =>
   state.pollingUnits.loading[
     buildKey("pollingUnits/getPollingUnitsByWard", { organizationId, wardId })
+  ] ?? false;
+
+export const selectOverVotingByOrganization = (
+  organizationId: string,
+  electionId: string
+) => (state: RootState) =>
+  state.pollingUnits.cache[
+    buildKey("pollingUnits/getOverVotingByOrganization", { organizationId, electionId })
+  ] as {
+    organizationId: string;
+    electionId: string;
+    total: number;
+    overVotingUnits: Array<{
+      pollingUnitId: string;
+      pollingUnitName: string;
+      pollingUnitCode: string;
+      accreditedCount: number;
+      totalVotesCast: number;
+      excess: number;
+      agent: { name: string; phone: string; email: string; role: string } | null;
+      aspirants: Array<{
+        aspirantId: string;
+        aspirantName: string;
+        partyCode: string;
+        votes: number;
+        partyLogo: string | null;
+        partyColor: string | null;
+      }>;
+    }>;
+  } | undefined;
+
+export const selectOverVotingByOrganizationLoading = (
+  organizationId: string,
+  electionId: string
+) => (state: RootState) =>
+  state.pollingUnits.loading[
+    buildKey("pollingUnits/getOverVotingByOrganization", { organizationId, electionId })
   ] ?? false;
 
 export const selectAllAccreditationByOrganization = (

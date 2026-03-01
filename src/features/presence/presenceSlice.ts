@@ -1,5 +1,5 @@
 import { createSlice, isAnyOf } from "@reduxjs/toolkit";
-import { checkIn, reportMyPresence, listPresence } from "./presenceApi";
+import { checkIn, reportMyPresence, listPresence, getPresenceReport } from "./presenceApi";
 
 const cacheKey = (action: { type: string; meta?: { arg?: unknown } }) => {
   const base = action.type.replace(/\/(pending|fulfilled|rejected)$/, "");
@@ -27,7 +27,7 @@ const initialState: PresenceState = {
   error: {},
 };
 
-const allThunks = [checkIn, reportMyPresence, listPresence];
+const allThunks = [checkIn, reportMyPresence, listPresence, getPresenceReport];
 
 const pendingMatcher = isAnyOf(...allThunks.map((t) => t.pending));
 const fulfilledMatcher = isAnyOf(...allThunks.map((t) => t.fulfilled));

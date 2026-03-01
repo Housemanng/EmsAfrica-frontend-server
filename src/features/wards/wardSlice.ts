@@ -1,5 +1,6 @@
 import { createSlice, isAnyOf } from "@reduxjs/toolkit";
 import {
+  getWardStatsByOrganization,
   getAllWards,
   getWardsByLGA,
   getWardById,
@@ -29,6 +30,7 @@ const initialState: WardState = {
 };
 
 const allThunks = [
+  getWardStatsByOrganization,
   getAllWards,
   getWardsByLGA,
   getWardById,

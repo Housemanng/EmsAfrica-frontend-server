@@ -34,6 +34,16 @@ export const selectPollingUnitsByWard = (wardId: string) => (state: RootState) =
 export const selectPollingUnitsByWardLoading = (wardId: string) => (state: RootState) =>
   state.wards.loading[buildKey("wards/getPollingUnitsByWard", wardId)] ?? false;
 
+// User-accessible: ward stats by organization
+export const selectWardStatsByOrganization = (organizationId: string) => (state: RootState) =>
+  state.wards.cache[
+    buildKey("wards/getWardStatsByOrganization", organizationId)
+  ] as { total: number; assigned: number; remaining: number } | undefined;
+export const selectWardStatsByOrganizationLoading = (organizationId: string) => (state: RootState) =>
+  state.wards.loading[
+    buildKey("wards/getWardStatsByOrganization", organizationId)
+  ] ?? false;
+
 // Generic
 export const selectByKey = (key: string) => (state: RootState) => state.wards.cache[key];
 export const selectLoadingByKey = (key: string) => (state: RootState) =>

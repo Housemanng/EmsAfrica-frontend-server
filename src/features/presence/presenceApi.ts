@@ -71,7 +71,57 @@ export const reportMyPresence = createAsyncThunk(
   }
 );
 
-/** GET /api/presence?electionId=&stateId=&lgaId=&wardId=&pollingUnitId= – List agents currently available */
+/** GET /api/presence/organization/:organizationId/election/:electionId/report – Full presence report with PO agents, presence, voting */
+export const getPresenceReport = createAsyncThunk(
+  "presence/getPresenceReport",
+  async (
+    params: {
+      organizationId: string;
+      electionId: string;
+      query?: { stateId?: string; lgaId?: string; wardId?: string };
+    },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.get(
+        `/presence/organization/${params.organizationId}/election/${params.electionId}/report`,
+        { params: params.query, headers: getAuthHeaders(getState) }
+      );
+      return res.data as {
+        organizationId: string;
+        electionId: string;
+        summary: { total: number; present: number; notPresent: number; votingStarted: number; votingEnded: number };
+        rows: Array<{
+          pollingUnitId: string;
+          pollingUnitName: string;
+          pollingUnitCode: string;
+          wardName: string;
+          lgaName: string;
+          poAgentName: string;
+          poPhoneNumber: string;
+          presence: string;
+          presenceCheckedInAt?: string | null;
+          accreditedCount: number | null;
+          votingStarted: string;
+          votingEnded: string;
+          accreditationStarted: boolean;
+          accreditationEnded: boolean;
+          votingStartedAt?: string;
+          votingEndedAt?: string;
+          accreditationStartedAt?: string;
+          accreditationEndedAt?: string;
+        }>;
+      };
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to get presence report"
+      );
+    }
+  }
+);
+
+/** GET /api/presence?electionId=&stateId=&lgaId=&wardId=&pollingUnitId= – List agents currently available at polling units */
 export const listPresence = createAsyncThunk(
   "presence/listPresence",
   async (
@@ -89,7 +139,7 @@ export const listPresence = createAsyncThunk(
         params,
         headers: getAuthHeaders(getState),
       });
-      return res.data;
+      return res.data as { presence: unknown[]; count: number };
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string; error?: string } } };
       return rejectWithValue(
@@ -98,3 +148,4 @@ export const listPresence = createAsyncThunk(
     }
   }
 );
+

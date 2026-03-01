@@ -1,5 +1,6 @@
 import { createSlice, isAnyOf } from "@reduxjs/toolkit";
 import {
+  getLGAStatsByOrganization,
   getAllLGAs,
   getLGAsByState,
   getLGAsByStateName,
@@ -29,6 +30,7 @@ const initialState: LGAState = {
 };
 
 const allThunks = [
+  getLGAStatsByOrganization,
   getAllLGAs,
   getLGAsByState,
   getLGAsByStateName,

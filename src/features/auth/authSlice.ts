@@ -15,6 +15,7 @@ export interface AuthUser {
   id: string;
   username: string;
   email?: string;
+  phoneNumber?: string;
   photo?: string;
   organization?: { _id?: string; id?: string; name: string };
   state?: { _id?: string; name: string };

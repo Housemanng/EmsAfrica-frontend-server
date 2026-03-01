@@ -3,6 +3,12 @@ import axios from "axios";
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
+/** Socket.io server URL (API base without /api). */
+export const SOCKET_URL: string = (() => {
+  const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  return base.replace(/\/api\/?$/, "") || "http://localhost:5000";
+})();
+
 /** Host for tenant resolution. On localhost use VITE_STATE_HOST; on production use current host (e.g. imo.pdp.emsafrica.net). */
 const getStateHost = (): string | undefined => {
   if (typeof window === "undefined") return import.meta.env.VITE_STATE_HOST as string | undefined;

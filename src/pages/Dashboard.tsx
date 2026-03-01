@@ -9,7 +9,10 @@ import {
 import { getLGAsByState, selectLGAsByState } from "../features/lgas";
 import { getWardsByLGA, selectWardsByLGA } from "../features/wards";
 import {
+  getPollingUnitStatsByOrganization,
   getPollingUnitsByWard,
+  selectPollingUnitStatsByOrganization,
+  selectPollingUnitStatsByOrganizationLoading,
   selectPollingUnitsByWard,
 } from "../features/pollingUnits";
 import {
@@ -176,11 +179,18 @@ export default function Dashboard() {
   const orgUsers = useSelector((state: RootState) =>
     selectUsersByOrganizationId(organizationId ?? "")(state)
   ) as OrgUser[] | undefined;
+  const puStats = useSelector(
+    (state: RootState) => selectPollingUnitStatsByOrganization(organizationId ?? "")(state)
+  );
+  const puStatsLoading = useSelector(
+    (state: RootState) => selectPollingUnitStatsByOrganizationLoading(organizationId ?? "")(state)
+  );
 
   useEffect(() => {
     if (organizationId && OVERVIEW_ROLES.includes(role)) {
       dispatch(getStatesByOrganizationId(organizationId));
       dispatch(getUsersByOrganizationId(organizationId));
+      dispatch(getPollingUnitStatsByOrganization(organizationId));
     }
   }, [dispatch, organizationId, role]);
 
@@ -300,7 +310,10 @@ export default function Dashboard() {
   const puAssignedUsers = puUsersPayload?.users ?? [];
 
   const refetchUsers = () => {
-    if (organizationId && OVERVIEW_ROLES.includes(role)) dispatch(getUsersByOrganizationId(organizationId));
+    if (organizationId && OVERVIEW_ROLES.includes(role)) {
+      dispatch(getUsersByOrganizationId(organizationId));
+      dispatch(getPollingUnitStatsByOrganization(organizationId));
+    }
   };
 
   const handleOpenCreateUser = async () => {
@@ -465,8 +478,18 @@ export default function Dashboard() {
         </div>
         <div className="dash-card">
           <h3 className="dash-card__title">Polling Units</h3>
-          <p className="dash-card__value">1,247</p>
-          <p className="dash-card__meta">Last Update: 2hrs ago</p>
+          <p className="dash-card__value">
+            {puStatsLoading ? "—" : (puStats?.total ?? 0).toLocaleString()}
+          </p>
+          <p className="dash-card__meta">
+            {puStatsLoading ? "Loading…" : (
+              <>
+                <span className="dash-card__meta-assigned">{(puStats?.assigned ?? 0).toLocaleString()} assigned</span>
+                {" · "}
+                <span className="dash-card__meta-remaining">{(puStats?.remaining ?? 0).toLocaleString()} remaining</span>
+              </>
+            )}
+          </p>
           <div className="dash-card__row">
             <span />
             <IconChevronCard />

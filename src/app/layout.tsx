@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { SlArrowLeft } from "react-icons/sl";
@@ -193,6 +193,19 @@ const IconState = () => (
     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
   </svg>
 );
+const IconPresence = () => (
+  <svg
+    className="dash-sidebar__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="8.5" cy="7" r="4" />
+    <polyline points="17 11 19 13 23 9" />
+  </svg>
+);
 
 /* eslint-enable max-len */
 
@@ -222,7 +235,13 @@ export default function Layout() {
 
   const token = useSelector((state: RootState) => state.auth.token);
 
+  // Fetch once per session — no repeat on re-renders or route changes
+  const userFetchedRef = useRef(false);
+  const tenantFetchedRef = useRef(false);
+
   useEffect(() => {
+    if (tenantFetchedRef.current) return;
+    tenantFetchedRef.current = true;
     api
       .get("/tenant-context")
       .then((res) => {
@@ -242,13 +261,15 @@ export default function Layout() {
 
   useEffect(() => {
     if (!user?.id || !token) return;
+    if (userFetchedRef.current) return;
+    userFetchedRef.current = true;
     api
       .get(`/users/${user.id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         const data = res.data;
         let updated = false;
-        if (data?.photo !== undefined) {
-          dispatch(updateUser({ photo: data.photo }));
+        if (data?.photo !== undefined || data?.phoneNumber !== undefined) {
+          dispatch(updateUser({ photo: data.photo, phoneNumber: data.phoneNumber }));
           updated = true;
         }
         const party = data?.organization?.party ?? null;
@@ -260,9 +281,10 @@ export default function Layout() {
           const raw = localStorage.getItem("userAuth");
           if (raw) {
             try {
-              const stored = JSON.parse(raw) as { user?: { photo?: string }; token?: string; role?: string; party?: unknown };
-              if (stored.user && data?.photo !== undefined) {
-                stored.user = { ...stored.user, photo: data.photo };
+              const stored = JSON.parse(raw) as { user?: { photo?: string; phoneNumber?: string }; token?: string; role?: string; party?: unknown };
+              if (stored.user) {
+                if (data?.photo !== undefined) stored.user = { ...stored.user, photo: data.photo };
+                if (data?.phoneNumber !== undefined) stored.user = { ...stored.user, phoneNumber: data.phoneNumber };
               }
               if (party) stored.party = party;
               localStorage.setItem("userAuth", JSON.stringify(stored));
@@ -294,6 +316,27 @@ export default function Layout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   const isOverviewRole = role === "executive" || role === "regular" || role === "superadmin";
+
+  const AGENT_ROLE_HOME: Record<string, string> = {
+    presiding_officer_po_agent: "/accreditation",
+    ra_ward_collation_officer_agent: "/ward-results",
+    lga_collation_officer_agent: "/lga-results",
+    state_constituency_returning_officer_agent: "/state-results",
+    federal_constituency_returning_officer_agent: "/state-results",
+    senatorial_district_agent: "/state-results",
+    state_returning_officer_agent: "/state-results",
+    national_level_agent: "/state-results",
+  };
+
+  useEffect(() => {
+    if (!role || isOverviewRole) return;
+    const homePath = AGENT_ROLE_HOME[role];
+    if (!homePath) return;
+    const nonHomePaths = ["/dashboard", "/"];
+    if (nonHomePaths.includes(location.pathname)) {
+      navigate(homePath, { replace: true });
+    }
+  }, [role, location.pathname]);
 
   const ROLE_LABELS: Record<string, string> = {
     regular: "Regular",
@@ -359,11 +402,12 @@ export default function Layout() {
             )}
             {isOverviewRole && (
               <Link
-                to="/dashboard"
-                className="dash-sidebar__link"
+                to="/presence"
+                className={`dash-sidebar__link ${location.pathname === "/presence" ? "dash-sidebar__link--active" : ""}`}
                 onClick={closeSidebar}
               >
-                <IconChart /> Analytics
+                <IconPresence /> Presence
+                {location.pathname === "/presence" && <IconChevronRight />}
               </Link>
             )}
             {isOverviewRole && (
@@ -372,7 +416,17 @@ export default function Layout() {
                 className="dash-sidebar__link"
                 onClick={closeSidebar}
               >
+                <IconChart /> Analytics
+              </Link>
+            )}
+            {(isOverviewRole || role === "presiding_officer_po_agent") && (
+              <Link
+                to="/accreditation"
+                className={`dash-sidebar__link ${location.pathname === "/accreditation" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
                 <IconCheck /> Accreditation
+                {location.pathname === "/accreditation" && <IconChevronRight />}
               </Link>
             )}
            
@@ -544,6 +598,9 @@ export default function Layout() {
               </h2>
               {roleLabel && (
                 <p className="dash-header__role">{roleLabel}</p>
+              )}
+              {user?.phoneNumber && (
+                <p className="dash-header__phone">{user.phoneNumber}</p>
               )}
             </div>
             <div className="dash-header__actions">

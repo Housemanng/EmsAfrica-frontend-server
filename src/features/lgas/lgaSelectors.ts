@@ -34,6 +34,16 @@ export const selectLGAById = (id: string) => (state: RootState) =>
 export const selectLGAByIdLoading = (id: string) => (state: RootState) =>
   state.lgas.loading[buildKey("lgas/getLGAById", id)] ?? false;
 
+// User-accessible: LGA stats by organization
+export const selectLGAStatsByOrganization = (organizationId: string) => (state: RootState) =>
+  state.lgas.cache[
+    buildKey("lgas/getLGAStatsByOrganization", organizationId)
+  ] as { total: number; assigned: number; remaining: number } | undefined;
+export const selectLGAStatsByOrganizationLoading = (organizationId: string) => (state: RootState) =>
+  state.lgas.loading[
+    buildKey("lgas/getLGAStatsByOrganization", organizationId)
+  ] ?? false;
+
 // Generic
 export const selectByKey = (key: string) => (state: RootState) => state.lgas.cache[key];
 export const selectLoadingByKey = (key: string) => (state: RootState) =>

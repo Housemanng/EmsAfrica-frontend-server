@@ -16,6 +16,12 @@ import {
   selectElectionsByOrganizationIdLoading,
   selectElectionsByOrganizationIdError,
 } from "../features/elections/electionSelectors";
+import { getParties } from "../features/results/resultsApi";
+import {
+  selectParties,
+  selectPartiesLoading,
+} from "../features/results/resultsSelectors";
+import PartySelect from "../components/PartySelect";
 import "./Dashboard.css";
 
 const ELECTION_TYPE_OPTIONS = [
@@ -172,7 +178,7 @@ export default function Elections() {
   const [editLoading, setEditLoading] = useState(false);
   const [showCreateAspirantModal, setShowCreateAspirantModal] = useState(false);
   const [createAspirantElection, setCreateAspirantElection] = useState<Election | null>(null);
-  const [createAspirantForm, setCreateAspirantForm] = useState({ name: "", partyCode: "", party: "" });
+  const [createAspirantForm, setCreateAspirantForm] = useState({ name: "", partyId: "" });
   const [createAspirantError, setCreateAspirantError] = useState("");
   const [createAspirantLoading, setCreateAspirantLoading] = useState(false);
   const [actionsOpenId, setActionsOpenId] = useState<string | null>(null);
@@ -190,6 +196,8 @@ export default function Elections() {
   const error = useSelector((state: RootState) =>
     (selectElectionsByOrganizationIdError(organizationId ?? "", electionsQuery)(state) as string | null) ?? null
   );
+  const parties = useSelector((state: RootState) => selectParties(state));
+  const partiesLoading = useSelector((state: RootState) => selectPartiesLoading(state));
 
   useEffect(() => {
     if (!organizationId) {
@@ -383,9 +391,10 @@ export default function Elections() {
 
   const handleOpenCreateAspirant = (election: Election) => {
     setCreateAspirantElection(election);
-    setCreateAspirantForm({ name: "", partyCode: "", party: "" });
+    setCreateAspirantForm({ name: "", partyId: "" });
     setCreateAspirantError("");
     setShowCreateAspirantModal(true);
+    dispatch(getParties());
   };
 
   const handleCloseCreateAspirant = () => {
@@ -428,8 +437,10 @@ export default function Elections() {
 
   const handleCreateAspirantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createAspirantElection || !createAspirantForm.name.trim() || !createAspirantForm.partyCode.trim()) {
-      setCreateAspirantError("Name and party code are required.");
+    const partiesList = parties ?? [];
+    const selectedParty = partiesList.find((p) => p._id === createAspirantForm.partyId);
+    if (!createAspirantElection || !createAspirantForm.name.trim() || !createAspirantForm.partyId || !selectedParty) {
+      setCreateAspirantError("Name and party are required.");
       return;
     }
     setCreateAspirantError("");
@@ -440,8 +451,8 @@ export default function Elections() {
           electionId: createAspirantElection._id,
           body: {
             name: createAspirantForm.name.trim(),
-            partyCode: createAspirantForm.partyCode.trim().toUpperCase(),
-            party: createAspirantForm.party.trim() || createAspirantForm.partyCode.trim(),
+            partyCode: (selectedParty.acronym ?? "").trim().toUpperCase(),
+            party: (selectedParty.name ?? "").trim(),
           },
         })
       ).unwrap();
@@ -1025,24 +1036,15 @@ export default function Elections() {
                 />
               </div>
               <div className="dash-modal__field">
-                <label htmlFor="ca-party-code">Party Code</label>
-                <input
-                  id="ca-party-code"
-                  type="text"
-                  value={createAspirantForm.partyCode}
-                  onChange={(e) => setCreateAspirantForm((f) => ({ ...f, partyCode: e.target.value.toUpperCase() }))}
-                  placeholder="e.g. PDP, APC"
-                  required
-                />
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="ca-party">Party Name (optional)</label>
-                <input
+                <PartySelect
                   id="ca-party"
-                  type="text"
-                  value={createAspirantForm.party}
-                  onChange={(e) => setCreateAspirantForm((f) => ({ ...f, party: e.target.value }))}
-                  placeholder="e.g. Peoples Democratic Party"
+                  label="Party"
+                  value={createAspirantForm.partyId}
+                  onChange={(partyId) => setCreateAspirantForm((f) => ({ ...f, partyId }))}
+                  parties={parties ?? []}
+                  placeholder="Select party..."
+                  required
+                  loading={partiesLoading}
                 />
               </div>
               {createAspirantError && <p className="dash-table-section__error">{createAspirantError}</p>}

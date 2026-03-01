@@ -7,6 +7,25 @@ const getAuthHeaders = (getState: () => unknown) => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// ─── User-accessible: LGA stats by organization ───────────────────────────────
+/** GET /lgas/organization/:organizationId/stats – total, assigned, remaining */
+export const getLGAStatsByOrganization = createAsyncThunk(
+  "lgas/getLGAStatsByOrganization",
+  async (organizationId: string, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(
+        `/lgas/organization/${organizationId}/stats`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data as { total: number; assigned: number; remaining: number };
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get LGA stats"
+      );
+    }
+  }
+);
+
 // ─── GET ─────────────────────────────────────────────────────────────────────
 export const getAllLGAs = createAsyncThunk(
   "lgas/getAllLGAs",

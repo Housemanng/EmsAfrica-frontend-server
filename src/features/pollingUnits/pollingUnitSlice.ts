@@ -1,5 +1,6 @@
 import { createSlice, isAnyOf } from "@reduxjs/toolkit";
 import {
+  getPollingUnitStatsByOrganization,
   getUsersByPollingUnitId,
   getPollingUnitsByWard,
   getAllAccreditationByOrganization,
@@ -13,6 +14,7 @@ import {
   createPollingUnit,
   updatePollingUnit,
   deletePollingUnit,
+  getOverVotingByOrganization,
 } from "./pollingUnitApi";
 
 const cacheKey = (action: { type: string; meta?: { arg?: unknown } }) => {
@@ -34,6 +36,7 @@ const initialState: PollingUnitState = {
 };
 
 const allThunks = [
+  getPollingUnitStatsByOrganization,
   getUsersByPollingUnitId,
   getPollingUnitsByWard,
   getAllAccreditationByOrganization,
@@ -47,6 +50,7 @@ const allThunks = [
   createPollingUnit,
   updatePollingUnit,
   deletePollingUnit,
+  getOverVotingByOrganization,
 ];
 
 const pendingMatcher = isAnyOf(...allThunks.map((t) => t.pending));

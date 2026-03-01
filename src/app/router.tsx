@@ -6,6 +6,8 @@ import Dashboard from "../pages/Dashboard";
 import UserManagement from "../pages/UserManagement";
 import Elections from "../pages/Elections";
 import Results from "../pages/Results";
+import Accreditation from "../pages/Accreditation";
+import Presence from "../pages/Presence";
 import PollingUnitResult from "../pages/PollingUnitResult";
 import WardResult from "../pages/WardResult";
 import LGAResult from "../pages/LGAResult";
@@ -56,6 +58,8 @@ export const router = createBrowserRouter([
       { path: "/dashboard/user-management", element: <UserManagement /> },
       { path: "/elections", element: <Elections /> },
       { path: "/results", element: <Results /> },
+      { path: "/accreditation", element: <Accreditation /> },
+      { path: "/presence", element: <Presence /> },
       { path: "/pu-results", element: <PollingUnitResult /> },
       { path: "/ward-results", element: <WardResult /> },
       { path: "/lga-results", element: <LGAResult /> },
