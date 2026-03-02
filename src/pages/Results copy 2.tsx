@@ -688,12 +688,10 @@ function PoElectionCard({
                     myVotes >= maxVotesInElection &&
                     (positionLabel === "1st" || positionLabel === null);
 
-                  const isFirst = positionLabel === "1st";
-
                   return (
                     <div
                       key={a._id}
-                      className={`results-aspirant-row${submittedVotes !== null ? " results-aspirant-row--submitted" : ""}${isLeading ? " results-aspirant-row--leading" : ""}${isFirst && !isLeading ? " results-aspirant-row--first" : ""}`}
+                      className={`results-aspirant-row${submittedVotes !== null ? " results-aspirant-row--submitted" : ""}${isLeading ? " results-aspirant-row--leading" : ""}`}
                     >
                       <div className="results-aspirant-row__info">
                         {partyLogo ? (
@@ -737,7 +735,7 @@ function PoElectionCard({
                             <div className="results-aspirant-row__meta">
                               {positionLabel && (
                                 <span
-                                  className={`results-aspirant-row__position${positionLabel === "1st" ? " results-aspirant-row__position--leading" : ""}`}
+                                  className={`results-aspirant-row__position${isLeading ? " results-aspirant-row__position--leading" : ""}`}
                                 >
                                   {positionLabel}
                                 </span>
@@ -2014,12 +2012,12 @@ export default function Results() {
       </div>
 
       <div className="results-polling-unit">
-        {/* <div className="results-polling-unit__item">
+        <div className="results-polling-unit__item">
           <span className="results-polling-unit__label">User</span>
           <span className="results-polling-unit__value">
             {user?.username || "—"}
           </span>
-        </div> */}
+        </div>
         <div className="results-polling-unit__item">
           <span className="results-polling-unit__label">Role</span>
           <span className="results-polling-unit__value">
@@ -2031,14 +2029,14 @@ export default function Results() {
               : "—"}
           </span>
         </div>
-        {/* {user?.phoneNumber && (
+        {user?.phoneNumber && (
           <div className="results-polling-unit__item">
             <span className="results-polling-unit__label">Phone</span>
             <span className="results-polling-unit__value">
               {user.phoneNumber}
             </span>
           </div>
-        )} */}
+        )}
         {u?.lga && (
           <div className="results-polling-unit__item">
             <span className="results-polling-unit__label">LGA</span>
@@ -2140,13 +2138,10 @@ export default function Results() {
                       </span>
                       <div className="results-pu-card__body">
                         <span className="results-pu-card__label">
-                          Presence
-                        </span>
-                        <span className="results-pu-card__value">
-                          ✓
+                          Presence marked
                         </span>
                         <span className="results-pu-card__sublabel">
-                          Checked in
+                          You are checked in for this election
                         </span>
                       </div>
                     </div>
@@ -2709,27 +2704,17 @@ export default function Results() {
             className="results-overvote-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* ── Sticky header ── */}
             <div className="results-overvote-modal__header">
-              <div className="results-overvote-modal__header-left">
-                <div className="results-overvote-modal__header-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/>
-                    <line x1="12" y1="17" x2="12.01" y2="17"/>
-                  </svg>
-                </div>
-                <div>
-                  <h2
-                    id="overvote-modal-title"
-                    className="results-overvote-modal__title"
-                  >
-                    Over-Voting Report
-                  </h2>
-                  <p className="results-overvote-modal__subtitle">
-                    Polling units where total votes cast exceeds accredited voters
-                  </p>
-                </div>
+              <div>
+                <h2
+                  id="overvote-modal-title"
+                  className="results-overvote-modal__title"
+                >
+                  Over-Voting Report
+                </h2>
+                <p className="results-overvote-modal__subtitle">
+                  Polling units where total votes cast exceeds accredited voters
+                </p>
               </div>
               <button
                 type="button"
@@ -2741,288 +2726,203 @@ export default function Results() {
               </button>
             </div>
 
-            {/* ── Scrollable body ── */}
-            <div className="results-overvote-modal__body">
-              {overVotingLoading ? (
-                <div className="results-pu-cards-loading" style={{ padding: "3rem 0" }}>
-                  <span className="results-pu-cards-loading__spinner" />
-                  <span className="results-pu-cards-loading__text">
-                    Loading over-voting data…
+            {overVotingLoading ? (
+              <div
+                className="results-pu-cards-loading"
+                style={{ padding: "3rem 0" }}
+              >
+                <span className="results-pu-cards-loading__spinner" />
+                <span className="results-pu-cards-loading__text">
+                  Loading over-voting data…
+                </span>
+              </div>
+            ) : !overVotingData ||
+              overVotingData.overVotingUnits.length === 0 ? (
+              <div className="results-overvote-modal__empty">
+                <span className="results-overvote-modal__empty-icon">✓</span>
+                <p>No over-voting detected across all polling units.</p>
+              </div>
+            ) : (
+              <>
+                <div className="results-overvote-modal__summary">
+                  <span className="results-overvote-modal__summary-badge">
+                    {overVotingData.overVotingUnits.length} affected polling
+                    unit{overVotingData.overVotingUnits.length !== 1 ? "s" : ""}
+                  </span>
+                  <span className="results-overvote-modal__summary-excess">
+                    Total excess:{" "}
+                    <strong>
+                      +
+                      {overVotingData.overVotingUnits
+                        .reduce((s, u) => s + u.excess, 0)
+                        .toLocaleString()}
+                    </strong>{" "}
+                    votes
                   </span>
                 </div>
-              ) : !overVotingData || overVotingData.overVotingUnits.length === 0 ? (
-                <div className="results-overvote-modal__empty">
-                  <span className="results-overvote-modal__empty-icon">✓</span>
-                  <p>No over-voting detected across all polling units.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Summary bar */}
-                  {(() => {
-                    const totalExcess = overVotingData.overVotingUnits.reduce((s, u) => s + u.excess, 0);
 
-                    // Tally total votes per aspirant across all affected polling units
-                    const aspirantTally = new Map<string, {
-                      aspirantName: string;
-                      partyCode: string;
-                      partyLogo: string | null;
-                      partyColor: string | null;
-                      totalVotes: number;
-                    }>();
-                    for (const unit of overVotingData.overVotingUnits) {
-                      for (const a of unit.aspirants) {
-                        const existing = aspirantTally.get(a.aspirantId);
-                        if (existing) {
-                          existing.totalVotes += a.votes;
-                        } else {
-                          aspirantTally.set(a.aspirantId, {
-                            aspirantName: a.aspirantName,
-                            partyCode: a.partyCode,
-                            partyLogo: a.partyLogo,
-                            partyColor: a.partyColor,
-                            totalVotes: a.votes,
-                          });
-                        }
-                      }
-                    }
-                    const beneficiary = [...aspirantTally.values()]
-                      .filter((a) => a.totalVotes > 0)
-                      .sort((a, b) => b.totalVotes - a.totalVotes)[0] ?? null;
-                    const bColor = beneficiary?.partyColor ?? "#374151";
-
-                    return (
-                      <div className="results-overvote-modal__summary">
-                        <div className="results-overvote-modal__summary-left">
-                          <span className="results-overvote-modal__summary-badge">
-                            {overVotingData.overVotingUnits.length} affected polling unit{overVotingData.overVotingUnits.length !== 1 ? "s" : ""}
+                <div className="results-overvote-modal__list">
+                  {overVotingData.overVotingUnits.map((unit, idx) => (
+                    <div
+                      key={unit.pollingUnitId}
+                      className="results-overvote-row"
+                    >
+                      {/* Header: rank + PU name + excess */}
+                      <div className="results-overvote-row__header">
+                        <span className="results-overvote-row__rank">
+                          #{idx + 1}
+                        </span>
+                        <div className="results-overvote-row__pu">
+                          <span className="results-overvote-row__pu-name">
+                            {unit.pollingUnitName}
                           </span>
-                          <span className="results-overvote-modal__summary-excess">
-                            Total excess:{" "}
-                            <strong>+{totalExcess.toLocaleString()}</strong> votes
-                          </span>
+                          {unit.pollingUnitCode && (
+                            <span className="results-overvote-row__pu-code">
+                              {unit.pollingUnitCode}
+                            </span>
+                          )}
                         </div>
-
-                        {beneficiary && (
-                          <div className="results-overvote-modal__beneficiary">
-                            <span className="results-overvote-modal__beneficiary-label">
-                              Most benefiting:
-                            </span>
-                            {beneficiary.partyLogo ? (
-                              <img
-                                src={beneficiary.partyLogo}
-                                alt={beneficiary.partyCode}
-                                className="results-overvote-modal__beneficiary-logo"
-                              />
-                            ) : beneficiary.partyCode ? (
-                              <span
-                                className="results-overvote-modal__beneficiary-logo results-overvote-modal__beneficiary-logo--initials"
-                                style={{ background: bColor }}
-                              >
-                                {beneficiary.partyCode.charAt(0)}
-                              </span>
-                            ) : null}
-                            <span
-                              className="results-overvote-modal__beneficiary-party"
-                              style={{ background: bColor }}
-                            >
-                              {beneficiary.partyCode}
-                            </span>
-                            <span className="results-overvote-modal__beneficiary-name">
-                              {beneficiary.aspirantName}
-                            </span>
-                            <span className="results-overvote-modal__beneficiary-votes">
-                              {beneficiary.totalVotes.toLocaleString()} votes
-                            </span>
-                          </div>
-                        )}
-
-                        <span className="results-overvote-modal__summary-note">
-                          Sorted by highest excess
+                        <span className="results-overvote-row__excess">
+                          +{unit.excess.toLocaleString()} excess
                         </span>
                       </div>
-                    );
-                  })()}
 
-                  {/* Cards list */}
-                  <div className="results-overvote-modal__list">
-                    {overVotingData.overVotingUnits.map((unit, idx) => (
-                      <div key={unit.pollingUnitId} className="results-overvote-row">
-
-                        {/* ── Card header: rank + PU name/code + excess badge ── */}
-                        <div className="results-overvote-row__header">
-                          <span className="results-overvote-row__rank">#{idx + 1}</span>
-                          <div className="results-overvote-row__pu">
-                            <span className="results-overvote-row__pu-name">
-                              {unit.pollingUnitName}
+                      {/* Agent info */}
+                      {unit.agent ? (
+                        <div className="results-overvote-row__agent">
+                          <span className="results-overvote-row__agent-icon">
+                            👤
+                          </span>
+                          <div className="results-overvote-row__agent-info">
+                            <span className="results-overvote-row__agent-name">
+                              {unit.agent.name || "—"}
                             </span>
-                            {unit.pollingUnitCode && (
-                              <span className="results-overvote-row__pu-code">
-                                Code: {unit.pollingUnitCode}
+                            {unit.agent.phone && (
+                              <span className="results-overvote-row__agent-phone">
+                                {unit.agent.phone}
                               </span>
                             )}
                           </div>
-                          <span className="results-overvote-row__excess">
-                            +{unit.excess.toLocaleString()} excess
+                        </div>
+                      ) : (
+                        <div className="results-overvote-row__agent results-overvote-row__agent--none">
+                          <span className="results-overvote-row__agent-icon">
+                            👤
+                          </span>
+                          <span
+                            className="results-overvote-row__agent-name"
+                            style={{ color: "#9ca3af" }}
+                          >
+                            No agent on record
                           </span>
                         </div>
+                      )}
 
-                        {/* ── Stats row ── */}
-                        <div className="results-overvote-row__stats">
-                          <div className="results-overvote-row__stat">
-                            <span className="results-overvote-row__stat-label">Accredited Voters</span>
-                            <span className="results-overvote-row__stat-value">
-                              {unit.accreditedCount.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="results-overvote-row__stat">
-                            <span className="results-overvote-row__stat-label">Total Votes Cast</span>
-                            <span className="results-overvote-row__stat-value results-overvote-row__stat-value--alert">
-                              {unit.totalVotesCast.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="results-overvote-row__stat">
-                            <span className="results-overvote-row__stat-label">Excess Votes</span>
-                            <span className="results-overvote-row__stat-value results-overvote-row__stat-value--alert results-overvote-row__stat-value--diff">
-                              +{unit.excess.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="results-overvote-row__stat">
-                            <span className="results-overvote-row__stat-label">Over-vote %</span>
-                            <span className="results-overvote-row__stat-value results-overvote-row__stat-value--alert">
-                              +{((unit.excess / unit.accreditedCount) * 100).toFixed(1)}%
-                            </span>
-                          </div>
+                      {/* Stats */}
+                      <div className="results-overvote-row__stats">
+                        <div className="results-overvote-row__stat">
+                          <span className="results-overvote-row__stat-label">
+                            Accredited
+                          </span>
+                          <span className="results-overvote-row__stat-value">
+                            {unit.accreditedCount.toLocaleString()}
+                          </span>
                         </div>
-
-                        {/* ── Presiding Officer details ── */}
-                        <div className="results-overvote-row__section-label">Presiding Officer</div>
-                        {unit.agent ? (
-                          <div className="results-overvote-row__agent">
-                            <div className="results-overvote-row__agent-avatar">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                            </div>
-                            <div className="results-overvote-row__agent-details">
-                              <div className="results-overvote-row__agent-row">
-                                <span className="results-overvote-row__agent-name">
-                                  {unit.agent.name || "—"}
-                                </span>
-                                {unit.agent.role && (
-                                  <span className="results-overvote-row__agent-role">
-                                    {unit.agent.role.replace(/_/g, " ")}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="results-overvote-row__agent-contacts">
-                                {unit.agent.phone && (
-                                  <span className="results-overvote-row__agent-contact">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="11" height="11">
-                                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.1 19.79 19.79 0 0 1 1.61 4.49 2 2 0 0 1 3.6 2.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.07 6.07l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17z"/>
-                                    </svg>
-                                    {unit.agent.phone}
-                                  </span>
-                                )}
-                                {unit.agent.email && (
-                                  <span className="results-overvote-row__agent-contact">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="11" height="11">
-                                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                      <polyline points="22,6 12,13 2,6"/>
-                                    </svg>
-                                    {unit.agent.email}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="results-overvote-row__agent results-overvote-row__agent--none">
-                            <div className="results-overvote-row__agent-avatar results-overvote-row__agent-avatar--none">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                            </div>
-                            <span className="results-overvote-row__agent-no-record">
-                              No presiding officer on record
-                            </span>
-                          </div>
-                        )}
-
-                        {/* ── Aspirants breakdown ── */}
-                        {unit.aspirants.length > 0 && (
-                          <>
-                            <div className="results-overvote-row__section-label">
-                              Aspirant Votes Breakdown
-                            </div>
-                            <div className="results-overvote-row__aspirants">
-                              {unit.aspirants.map((a, aIdx) => {
-                                const color = a.partyColor ?? "#374151";
-                                const isTopVoter = aIdx === 0 && a.votes > 0;
-                                const posOrdinals = ["1st", "2nd", "3rd", "4th", "5th"];
-                                const posLabel = aIdx < posOrdinals.length ? posOrdinals[aIdx] : `${aIdx + 1}th`;
-                                const pct = unit.totalVotesCast > 0
-                                  ? ((a.votes / unit.totalVotesCast) * 100).toFixed(1)
-                                  : "0.0";
-                                return (
-                                  <div
-                                    key={a.aspirantId}
-                                    className={`results-overvote-row__aspirant${isTopVoter ? " results-overvote-row__aspirant--leading" : ""}`}
-                                  >
-                                    <span className={`results-overvote-row__aspirant-pos${isTopVoter ? " results-overvote-row__aspirant-pos--first" : ""}`}>
-                                      {posLabel}
-                                    </span>
-                                    {a.partyLogo ? (
-                                      <img
-                                        src={a.partyLogo}
-                                        alt={a.partyCode}
-                                        className="results-overvote-row__aspirant-logo"
-                                      />
-                                    ) : a.partyCode ? (
-                                      <span
-                                        className="results-overvote-row__aspirant-logo results-overvote-row__aspirant-logo--initials"
-                                        style={{ background: color }}
-                                      >
-                                        {a.partyCode.charAt(0)}
-                                      </span>
-                                    ) : null}
-                                    {a.partyCode && (
-                                      <span
-                                        className="results-overvote-row__aspirant-party"
-                                        style={{ background: color }}
-                                      >
-                                        {a.partyCode}
-                                      </span>
-                                    )}
-                                    <span className="results-overvote-row__aspirant-name">
-                                      {a.aspirantName}
-                                    </span>
-                                    <div className="results-overvote-row__aspirant-right">
-                                      <span className={`results-overvote-row__aspirant-votes${isTopVoter ? " results-overvote-row__aspirant-votes--leading" : ""}`}>
-                                        {a.votes.toLocaleString()} votes
-                                      </span>
-                                      <span className="results-overvote-row__aspirant-pct">
-                                        {pct}%
-                                      </span>
-                                    </div>
-                                    {isTopVoter && (
-                                      <span className="results-aspirant-row__leading-badge">
-                                        Leading
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
+                        <div className="results-overvote-row__stat">
+                          <span className="results-overvote-row__stat-label">
+                            Votes Cast
+                          </span>
+                          <span className="results-overvote-row__stat-value results-overvote-row__stat-value--alert">
+                            {unit.totalVotesCast.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="results-overvote-row__stat">
+                          <span className="results-overvote-row__stat-label">
+                            Difference
+                          </span>
+                          <span className="results-overvote-row__stat-value results-overvote-row__stat-value--alert results-overvote-row__stat-value--diff">
+                            +{unit.excess.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="results-overvote-row__stat">
+                          <span className="results-overvote-row__stat-label">
+                            Over-vote %
+                          </span>
+                          <span className="results-overvote-row__stat-value results-overvote-row__stat-value--alert">
+                            +
+                            {(
+                              (unit.excess / unit.accreditedCount) *
+                              100
+                            ).toFixed(1)}
+                            %
+                          </span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+
+                      {/* Aspirants with party logo */}
+                      {unit.aspirants.length > 0 && (
+                        <div className="results-overvote-row__aspirants">
+                          {unit.aspirants.map((a, aIdx) => {
+                            const color = a.partyColor ?? "#374151";
+                            const isTopVoter = aIdx === 0 && a.votes > 0;
+                            const posOrdinals = ["1st", "2nd", "3rd"];
+                            const posLabel =
+                              aIdx < 3 ? posOrdinals[aIdx] : `${aIdx + 1}th`;
+                            return (
+                              <div
+                                key={a.aspirantId}
+                                className={`results-overvote-row__aspirant${isTopVoter ? " results-overvote-row__aspirant--leading" : ""}`}
+                              >
+                                <span
+                                  className={`results-overvote-row__aspirant-pos${isTopVoter ? " results-overvote-row__aspirant-pos--first" : ""}`}
+                                >
+                                  {posLabel}
+                                </span>
+                                {a.partyLogo ? (
+                                  <img
+                                    src={a.partyLogo}
+                                    alt={a.partyCode}
+                                    className="results-overvote-row__aspirant-logo"
+                                  />
+                                ) : a.partyCode ? (
+                                  <span
+                                    className="results-overvote-row__aspirant-logo results-overvote-row__aspirant-logo--initials"
+                                    style={{ background: color }}
+                                  >
+                                    {a.partyCode.charAt(0)}
+                                  </span>
+                                ) : null}
+                                {a.partyCode && (
+                                  <span
+                                    className="results-overvote-row__aspirant-party"
+                                    style={{ background: color }}
+                                  >
+                                    {a.partyCode}
+                                  </span>
+                                )}
+                                <span className="results-overvote-row__aspirant-name">
+                                  {a.aspirantName}
+                                </span>
+                                <span
+                                  className={`results-overvote-row__aspirant-votes${isTopVoter ? " results-overvote-row__aspirant-votes--leading" : ""}`}
+                                >
+                                  {a.votes.toLocaleString()} votes
+                                </span>
+                                {isTopVoter && (
+                                  <span className="results-aspirant-row__leading-badge">
+                                    Leading
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

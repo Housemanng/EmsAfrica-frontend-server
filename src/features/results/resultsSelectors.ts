@@ -256,6 +256,40 @@ export const selectAspirantTotalsByStateLocal = (
     buildKey("results/getAspirantTotalsByElectionAndState", { electionId, stateId })
   ] as any;
 
+export const selectPollingUnitBreakdownByWard = (
+  electionId: string,
+  wardId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getPollingUnitBreakdownByWard", { electionId, wardId })
+  ] as
+    | Array<{
+        pollingUnit: { _id: string; name: string; code?: string };
+        officer?: { _id: string; username?: string; name?: string; phoneNumber?: string };
+        results: Array<{
+          aspirant: { _id: string; name: string; partyCode?: string };
+          votes: number;
+        }>;
+      }>
+    | undefined;
+
+export const selectPollingUnitBreakdownByLga = (
+  electionId: string,
+  lgaId: string
+) => (state: RootState) =>
+  state.results.cache[
+    buildKey("results/getPollingUnitBreakdownByLga", { electionId, lgaId })
+  ] as
+    | Array<{
+        pollingUnit: { _id: string; name: string; code?: string };
+        officer?: { _id: string; username?: string; name?: string; phoneNumber?: string };
+        results: Array<{
+          aspirant: { _id: string; name: string; partyCode?: string };
+          votes: number;
+        }>;
+      }>
+    | undefined;
+
 // Generic: get cached data by thunk + arg
 export const selectByKey = (key: string) => (state: RootState) => state.results.cache[key];
 export const selectLoadingByKey = (key: string) => (state: RootState) =>

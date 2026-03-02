@@ -153,6 +153,46 @@ export const getAspirantTotalsFromPollingUnitByElection = createAsyncThunk(
   }
 );
 
+export const getPollingUnitBreakdownByWard = createAsyncThunk(
+  "results/getPollingUnitBreakdownByWard",
+  async (
+    params: { electionId: string; wardId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.get(
+        `/results/election/${params.electionId}/ward/${params.wardId}/polling-unit-breakdown`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get polling unit breakdown"
+      );
+    }
+  }
+);
+
+export const getPollingUnitBreakdownByLga = createAsyncThunk(
+  "results/getPollingUnitBreakdownByLga",
+  async (
+    params: { electionId: string; lgaId: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.get(
+        `/results/election/${params.electionId}/lga/${params.lgaId}/polling-unit-breakdown`,
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get LGA polling unit breakdown"
+      );
+    }
+  }
+);
+
 export const getAspirantTotalsFromStateByElection = createAsyncThunk(
   "results/getAspirantTotalsFromStateByElection",
   async (

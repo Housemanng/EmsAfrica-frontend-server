@@ -114,8 +114,7 @@ function ElectionLeadingBadge({
       const positionLabel = leader?.positionLabel ?? "1st";
       return (
         <span className="results-election-card__leading">
-          Leading ({positionLabel}): {name} — {leaderVotes.toLocaleString()}
-          votes
+          {`Leading (${positionLabel}): ${name} — ${leaderVotes.toLocaleString()} votes`}
         </span>
       );
     }
@@ -127,11 +126,11 @@ function ElectionLeadingBadge({
     );
     const leader = sorted[0];
     if ((leader?.votes ?? 0) > 0) {
+      const leaderName = leader.aspirant?.name ?? "—";
+      const leaderParty = leader.aspirant?.partyCode?.trim() ?? "";
       return (
         <span className="results-election-card__leading">
-          Leading: {leader.aspirant?.name ?? "—"} (
-          {leader.aspirant?.partyCode ?? ""}) — {leader.votes.toLocaleString()}
-          votes
+          {`Leading: ${leaderName}${leaderParty ? ` (${leaderParty})` : ""} — ${leader.votes.toLocaleString()} votes`}
         </span>
       );
     }
@@ -321,7 +320,7 @@ function PoElectionCard({
                             )}
                           </div>
                         )}
-                        {!isReadOnly && (
+                        {!isReadOnly && submittedVotes === null && (
                           <>
                             <input
                               type="number"
@@ -342,13 +341,14 @@ function PoElectionCard({
                                 accordionSavingAll
                               }
                             >
-                              {accordionSavingId === a._id
-                                ? "Saving…"
-                                : submittedVotes !== null
-                                  ? "Update"
-                                  : "Save"}
+                              {accordionSavingId === a._id ? "Saving…" : "Save"}
                             </button>
                           </>
+                        )}
+                        {!isReadOnly && submittedVotes !== null && (
+                          <span className="results-aspirant-row__saved-badge">
+                            Saved
+                          </span>
                         )}
                       </div>
                     </div>
