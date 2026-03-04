@@ -1,930 +1,737 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
 import {
-  getStatesByOrganizationId,
-  selectStatesByOrganizationId,
-} from "../features/states";
-import { getLGAsByState, selectLGAsByState } from "../features/lgas";
-import { getWardsByLGA, selectWardsByLGA } from "../features/wards";
+  getElectionsByOrganizationId,
+} from "../features/elections/electionApi";
 import {
-  getPollingUnitStatsByOrganization,
-  getPollingUnitsByWard,
-  selectPollingUnitStatsByOrganization,
-  selectPollingUnitStatsByOrganizationLoading,
-  selectPollingUnitsByWard,
-} from "../features/pollingUnits";
+  selectElectionsByOrganizationId,
+  selectElectionsByOrganizationIdLoading,
+} from "../features/elections/electionSelectors";
 import {
-  getUsersByOrganizationId,
-  getUsersByStateId,
-  getUsersByLgaId,
-  getUsersByWardId,
-  getUsersByPollingUnitId,
-  signupUserByOrganizationId,
-} from "../features/user";
-import { getUserRoles as fetchUserRoles } from "../features/auth/authApi";
+  getAspirantTotalsByElection,
+  getResultsByElection,
+  getParties,
+} from "../features/results/resultsApi";
 import {
-  selectUsersByOrganizationId,
-  selectUsersByStateId,
-  selectUsersByStateIdLoading,
-  selectUsersByLgaId,
-  selectUsersByLgaIdLoading,
-  selectUsersByWardId,
-  selectUsersByWardIdLoading,
-  selectUsersByPollingUnitId,
-  selectUsersByPollingUnitIdLoading,
-} from "../features/user/userSelectors";
-import { selectRole } from "../features/auth/authSelectors";
-import SearchableSelect from "../components/SearchableSelect";
-import "./Dashboard.css";
+  selectAspirantTotalsByElection,
+  selectAspirantTotalsByElectionLoading,
+  selectParties,
+} from "../features/results/resultsSelectors";
+import { selectLoadingByKey } from "../features/results/resultsSelectors";
+import { getLGAsByState } from "../features/lgas/lgaApi";
+import { selectLGAsByState } from "../features/lgas/lgaSelectors";
+import { getWardsByLGA } from "../features/wards/wardApi";
+import { selectWardsByLGA } from "../features/wards/wardSelectors";
+import { getPollingUnitsByWard, getAllAccreditationByOrganization, getOverVotingByOrganization } from "../features/pollingUnits/pollingUnitApi";
+import { selectPollingUnitsByWard, selectAllAccreditationByOrganization, selectOverVotingByOrganization } from "../features/pollingUnits/pollingUnitSelectors";
+import { useResultSocket } from "../hooks/useResultSocket";
+import "./ResultWinningAnalysis.css";
 
-const OVERVIEW_ROLES = ["superadmin", "executive", "regular"];
+const POSITION_LABELS = ["Leading", "Runner-up", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+const DEFAULT_COLORS = ["#0ea5e9", "#22c55e", "#eab308", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
-/* eslint-disable max-len */
-const IconChevronCard = () => (
-  <svg className="dash-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-);
-const IconChevronFeature = () => (
-  <svg className="dash-feature__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-);
-const IconFile = () => (
-  <svg className="dash-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-);
-const IconMapPin = () => (
-  <svg className="dash-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-);
-const IconBarChart = () => (
-  <svg className="dash-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-);
-const IconUsers = () => (
-  <svg className="dash-feature__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-);
-const IconCamera = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="28" height="28"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-);
-const IconTrash = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-);
-/* eslint-enable max-len */
+const CONSTITUENCY_TYPES = ["senate", "house_of_rep", "state_house_of_assembly", "state_assembly"];
 
-/** Fallback roles if API fails. */
-const DEFAULT_CREATE_ROLES = [
-  { value: "executive", label: "Executive" },
-  { value: "regular", label: "Regular" },
-  { value: "superadmin", label: "Super Admin" },
-];
+function PartyThumb({
+  party,
+  parties,
+}: {
+  party: { partyCode: string; name: string; color?: string; logo?: string };
+  parties: { _id?: string; acronym?: string; logo?: string; color?: string }[];
+}) {
+  const [imgError, setImgError] = useState(false);
+  const p = parties.find(
+    (x) =>
+      (x.acronym || "").toUpperCase() === (party.partyCode || "").toUpperCase()
+  );
+  const logo = party.logo ?? p?.logo ?? null;
+  const color = party.color ?? p?.color ?? "#6b7280";
+  const short = party.partyCode || p?.acronym || "?";
 
-interface OrgUser {
-  _id: string;
-  firstName?: string;
-  lastName?: string;
-  middleName?: string;
-  email?: string;
-  phoneNumber?: string;
-  role?: string;
-  isSuspended?: boolean;
-  sex?: string;
-  dateOfBirth?: string;
-  description?: string;
-  createdAt?: string;
-  createdBy?: { firstName?: string; lastName?: string } | string;
-}
-
-/** Org-level roles: no state/lga/ward/pollingUnit required */
-const ORG_LEVEL_ROLES = ["regular", "executive", "superadmin"];
-/** State-level roles: state only */
-const STATE_LEVEL_ROLES = ["state_constituency_returning_officer_agent", "state_returning_officer_agent"];
-/** LGA collation: state + lga */
-const LGA_COLLATION_ROLE = "lga_collation_officer_agent";
-/** Ward collation: state + lga + ward (no pollingUnit) */
-const WARD_COLLATION_ROLE = "ra_ward_collation_officer_agent";
-
-/** Stable empty array for selectors to avoid "different result" rerender warnings */
-const EMPTY_OPTIONS: { _id?: string; name?: string; code?: string }[] = [];
-
-const formatRoleLabel = (role?: string) =>
-  role ? role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—";
-
-interface AssignedAgent {
-  firstName?: string;
-  lastName?: string;
-  phoneNumber?: string;
-  role?: string;
-  photo?: string;
-}
-
-const getInitials = (agent: AssignedAgent) => {
-  const first = (agent.firstName ?? "").trim();
-  const last = (agent.lastName ?? "").trim();
-  if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
-  if (first) return first.slice(0, 2).toUpperCase();
-  if (last) return last.slice(0, 2).toUpperCase();
-  return "?";
-};
-
-const AssignedAgentCard = ({ agent }: { agent: AssignedAgent }) => (
-  <div className="dash-agent-card">
-    <div className="dash-agent-card__photo">
-      {agent.photo ? (
-        <img src={agent.photo} alt="" className="dash-agent-card__img" />
+  return (
+    <div
+      className="result-list__thumb"
+      style={{ background: color, color: "#fff" }}
+      title={party.name}
+    >
+      {logo && !imgError ? (
+        <img src={logo} alt={short} onError={() => setImgError(true)} />
       ) : (
-        <span className="dash-agent-card__initials">{getInitials(agent)}</span>
+        <span>{short}</span>
       )}
     </div>
-    <div className="dash-agent-card__details">
-      <div className="dash-agent-card__name">
-        {[agent.firstName, agent.lastName].filter(Boolean).join(" ") || "—"}
-      </div>
-      {agent.phoneNumber && (
-        <div className="dash-agent-card__phone">{agent.phoneNumber}</div>
-      )}
-      {agent.role && (
-        <div className="dash-agent-card__role">{formatRoleLabel(agent.role)}</div>
-      )}
-    </div>
-  </div>
-);
+  );
+}
+
+function buildResultsByElectionKey(
+  electionId: string | null,
+  params: { lgaId?: string; wardId?: string; pollingUnitId?: string }
+) {
+  if (!electionId) return "";
+  const p: Record<string, string> = {};
+  if (params.pollingUnitId) p.pollingUnitId = params.pollingUnitId;
+  else if (params.wardId) p.wardId = params.wardId;
+  else if (params.lgaId) p.lgaId = params.lgaId;
+  return `results/getResultsByElection::${JSON.stringify({ electionId, params: p })}`;
+}
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
-  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const [createUserForm, setCreateUserForm] = useState({
-    role: "executive",
-    state: "",
-    lga: "",
-    ward: "",
-    pollingUnit: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-    sex: "male" as "male" | "female",
-    dateOfBirth: "",
-    password: "",
-    photo: "" as string,
-    description: "",
-  });
-  const [createUserError, setCreateUserError] = useState("");
-  const [createUserLoading, setCreateUserLoading] = useState(false);
-  const [createUserRoles, setCreateUserRoles] = useState<Array<{ value: string; label: string }>>(DEFAULT_CREATE_ROLES);
-  const [showAssignedDetails, setShowAssignedDetails] = useState(true);
-  const [createUserSuccess, setCreateUserSuccess] = useState(false);
-
-  const organizationName = useSelector((state: RootState) => state.auth.user?.organization?.name);
-  const stateName = useSelector((state: RootState) => state.auth.user?.state?.name);
-  const organizationId = useSelector((state: RootState) => state.auth.user?.organization?._id ?? state.auth.user?.organization?.id);
-  const role = useSelector(selectRole) ?? "";
-  const orgStates = useSelector(selectStatesByOrganizationId(organizationId ?? ""));
-  const orgUsers = useSelector((state: RootState) =>
-    selectUsersByOrganizationId(organizationId ?? "")(state)
-  ) as OrgUser[] | undefined;
-  const puStats = useSelector(
-    (state: RootState) => selectPollingUnitStatsByOrganization(organizationId ?? "")(state)
-  );
-  const puStatsLoading = useSelector(
-    (state: RootState) => selectPollingUnitStatsByOrganizationLoading(organizationId ?? "")(state)
-  );
-
-  useEffect(() => {
-    if (organizationId && OVERVIEW_ROLES.includes(role)) {
-      dispatch(getStatesByOrganizationId(organizationId));
-      dispatch(getUsersByOrganizationId(organizationId));
-      dispatch(getPollingUnitStatsByOrganization(organizationId));
-    }
-  }, [dispatch, organizationId, role]);
-
-  const selectedRole = createUserForm.role;
-  const needsState = !ORG_LEVEL_ROLES.includes(selectedRole);
-  const needsLga = needsState && !STATE_LEVEL_ROLES.includes(selectedRole);
-  const needsWard = needsLga && selectedRole !== LGA_COLLATION_ROLE;
-  const needsPollingUnit = needsWard && selectedRole !== WARD_COLLATION_ROLE;
-
-  const createLgas = useSelector(
+  const organizationId = useSelector(
     (s: RootState) =>
-      (selectLGAsByState(createUserForm.state)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_OPTIONS
+      s.auth.user?.organization?._id ?? s.auth.user?.organization?.id
   );
-  const createWards = useSelector(
-    (s: RootState) =>
-      (selectWardsByLGA(createUserForm.lga)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_OPTIONS
+  const [selectedElectionId, setSelectedElectionId] = useState<string>("");
+  const [electionTypeFilter, setElectionTypeFilter] = useState<string>("governorship");
+  const [filter, setFilter] = useState<{
+    lgaId: string;
+    wardId: string;
+    pollingUnitId: string;
+  }>({ lgaId: "", wardId: "", pollingUnitId: "" });
+  const [showViewMorePartiesModal, setShowViewMorePartiesModal] = useState(false);
+
+  const electionsQuery = { status: "concluded" as const, includeResults: true };
+  const elections = useSelector((s: RootState) =>
+    selectElectionsByOrganizationId(organizationId ?? "", electionsQuery)(s)
+  ) ?? [];
+  const electionsLoading = useSelector((s: RootState) =>
+    selectElectionsByOrganizationIdLoading(
+      organizationId ?? "",
+      electionsQuery
+    )(s)
   );
-  const createPollingUnitsRaw = useSelector((s: RootState) =>
-    selectPollingUnitsByWard(organizationId ?? "", createUserForm.ward)(s)
-  );
-  const createPollingUnits = Array.isArray(createPollingUnitsRaw)
-    ? (createPollingUnitsRaw as { _id?: string; name?: string; code?: string }[])
-    : ((createPollingUnitsRaw as { pollingUnits?: { _id?: string; name?: string; code?: string }[] })?.pollingUnits ?? []);
 
   useEffect(() => {
-    if (createUserForm.state && needsState) {
-      dispatch(getLGAsByState(createUserForm.state));
-    }
-  }, [dispatch, createUserForm.state, needsState]);
-
-  useEffect(() => {
-    if (createUserForm.lga && needsLga) {
-      dispatch(getWardsByLGA(createUserForm.lga));
-    }
-  }, [dispatch, createUserForm.lga, needsLga]);
-
-  useEffect(() => {
-    if (organizationId && createUserForm.state && needsState) {
-      dispatch(
-        getUsersByStateId({
-          organizationId,
-          stateId: createUserForm.state,
-        })
-      );
-    }
-  }, [dispatch, organizationId, createUserForm.state, needsState]);
-
-  useEffect(() => {
-    if (organizationId && createUserForm.ward && needsWard) {
-      dispatch(getPollingUnitsByWard({ organizationId, wardId: createUserForm.ward }));
-    }
-  }, [dispatch, organizationId, createUserForm.ward, needsWard]);
-
-  useEffect(() => {
-    if (organizationId && createUserForm.lga && needsLga) {
-      dispatch(
-        getUsersByLgaId({
-          organizationId,
-          lgaId: createUserForm.lga,
-        })
-      );
-    }
-  }, [dispatch, organizationId, createUserForm.lga, needsLga]);
-
-  useEffect(() => {
-    if (organizationId && createUserForm.ward && needsWard) {
-      dispatch(
-        getUsersByWardId({
-          organizationId,
-          wardId: createUserForm.ward,
-        })
-      );
-    }
-  }, [dispatch, organizationId, createUserForm.ward, needsWard]);
-
-  useEffect(() => {
-    if (organizationId && createUserForm.pollingUnit && needsPollingUnit) {
-      dispatch(
-        getUsersByPollingUnitId({
-          organizationId,
-          pollingUnitId: createUserForm.pollingUnit,
-        })
-      );
-    }
-  }, [dispatch, organizationId, createUserForm.pollingUnit, needsPollingUnit]);
-
-  const stateUsersPayload = useSelector((s: RootState) =>
-    selectUsersByStateId(organizationId ?? "", createUserForm.state)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const stateUsersLoading = useSelector((s: RootState) =>
-    selectUsersByStateIdLoading(organizationId ?? "", createUserForm.state)(s)
-  );
-  const stateAssignedUsers = stateUsersPayload?.users ?? [];
-
-  const lgaUsersPayload = useSelector((s: RootState) =>
-    selectUsersByLgaId(organizationId ?? "", createUserForm.lga)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const lgaUsersLoading = useSelector((s: RootState) =>
-    selectUsersByLgaIdLoading(organizationId ?? "", createUserForm.lga)(s)
-  );
-  const lgaAssignedUsers = lgaUsersPayload?.users ?? [];
-
-  const wardUsersPayload = useSelector((s: RootState) =>
-    selectUsersByWardId(organizationId ?? "", createUserForm.ward)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const wardUsersLoading = useSelector((s: RootState) =>
-    selectUsersByWardIdLoading(organizationId ?? "", createUserForm.ward)(s)
-  );
-  const wardAssignedUsers = wardUsersPayload?.users ?? [];
-
-  const puUsersPayload = useSelector((s: RootState) =>
-    selectUsersByPollingUnitId(organizationId ?? "", createUserForm.pollingUnit)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const puUsersLoading = useSelector((s: RootState) =>
-    selectUsersByPollingUnitIdLoading(organizationId ?? "", createUserForm.pollingUnit)(s)
-  );
-  const puAssignedUsers = puUsersPayload?.users ?? [];
-
-  const refetchUsers = () => {
-    if (organizationId && OVERVIEW_ROLES.includes(role)) {
-      dispatch(getUsersByOrganizationId(organizationId));
-      dispatch(getPollingUnitStatsByOrganization(organizationId));
-    }
-  };
-
-  const handleOpenCreateUser = async () => {
-    setCreateUserForm({
-      role: "executive",
-      state: "",
-      lga: "",
-      ward: "",
-      pollingUnit: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phoneNumber: "",
-      sex: "male",
-      dateOfBirth: "",
-      password: "",
-      photo: "",
-      description: "",
-    });
-    setCreateUserError("");
-    setCreateUserSuccess(false);
-    setShowCreateUserModal(true);
-    try {
-      const roles = await fetchUserRoles();
-      if (roles.length > 0) setCreateUserRoles(roles);
-    } catch {
-      setCreateUserRoles(DEFAULT_CREATE_ROLES);
-    }
-  };
-
-  const handleCloseCreateUser = () => {
-    setShowCreateUserModal(false);
-    setCreateUserError("");
-    setCreateUserSuccess(false);
-  };
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setCreateUserForm((f) => ({ ...f, photo: dataUrl }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCreateUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
     if (!organizationId) return;
-    if (needsState && !createUserForm.state) {
-      setCreateUserError("Please select a state.");
-      return;
+    dispatch(
+      getElectionsByOrganizationId({
+        organizationId,
+        query: electionsQuery,
+      })
+    );
+    dispatch(getParties());
+  }, [dispatch, organizationId]);
+
+  const electionTypeOptions = [
+    { value: "governorship", label: "Governorship" },
+    { value: "", label: "All types" },
+    { value: "senate", label: "Senate" },
+    { value: "house_of_rep", label: "House of Rep" },
+    { value: "state_house_of_assembly", label: "State Assembly" },
+    { value: "presidential", label: "Presidential" },
+    { value: "local_government_chairman", label: "Chairmanship" },
+    { value: "councillorship", label: "Councillorship" },
+  ];
+  const filteredElections = electionTypeFilter
+    ? elections.filter((e) => {
+        const t = (e.type as string) ?? "";
+        if (electionTypeFilter === "councillorship") return t === "councillorship" || t === "councillor";
+        return t === electionTypeFilter;
+      })
+    : elections;
+  const selectedElection = elections.find((e) => e._id === selectedElectionId);
+
+  useEffect(() => {
+    if (electionTypeFilter === "governorship" && filteredElections.length > 0) {
+      const currentInFiltered = selectedElectionId && filteredElections.some((e) => e._id === selectedElectionId);
+      if (!currentInFiltered) {
+        setSelectedElectionId(filteredElections[0]._id ?? "");
+      }
     }
-    if (needsLga && !createUserForm.lga) {
-      setCreateUserError("Please select an LGA.");
-      return;
+  }, [electionTypeFilter, filteredElections, selectedElectionId]);
+  const stateId =
+    selectedElection?.state?._id ??
+    (selectedElection?.state as { id?: string })?.id ??
+    "";
+
+  useEffect(() => {
+    if (stateId) dispatch(getLGAsByState(stateId));
+  }, [dispatch, stateId]);
+
+  useEffect(() => {
+    if (filter.lgaId) dispatch(getWardsByLGA(filter.lgaId));
+  }, [dispatch, filter.lgaId]);
+
+  useEffect(() => {
+    if (organizationId && filter.wardId) {
+      dispatch(getPollingUnitsByWard({ organizationId, wardId: filter.wardId }));
     }
-    if (needsWard && !createUserForm.ward) {
-      setCreateUserError("Please select a ward.");
-      return;
-    }
-    if (needsPollingUnit && !createUserForm.pollingUnit) {
-      setCreateUserError("Please select a polling unit.");
-      return;
-    }
-    setCreateUserError("");
-    setCreateUserLoading(true);
-    try {
-      const signupBody: {
-            firstName: string;
-            lastName: string;
-            email: string;
-            phoneNumber: string;
-            sex: string;
-            dateOfBirth: string;
-            password: string;
-            role?: string;
-            photo?: string;
-            description?: string;
-            state?: string;
-            lga?: string;
-            ward?: string;
-            pollingUnit?: string;
-          } = {
-            firstName: createUserForm.firstName.trim(),
-            lastName: createUserForm.lastName.trim(),
-            email: createUserForm.email.trim(),
-            phoneNumber: createUserForm.phoneNumber.trim(),
-            sex: createUserForm.sex,
-            dateOfBirth: createUserForm.dateOfBirth,
-            password: createUserForm.password,
-            role: createUserForm.role,
-            photo: createUserForm.photo || undefined,
-            description: createUserForm.description.trim() || undefined,
-          };
-          if (needsState && createUserForm.state) signupBody.state = createUserForm.state;
-          if (needsLga && createUserForm.lga) signupBody.lga = createUserForm.lga;
-          if (needsWard && createUserForm.ward) signupBody.ward = createUserForm.ward;
-          if (needsPollingUnit && createUserForm.pollingUnit) signupBody.pollingUnit = createUserForm.pollingUnit;
-      await dispatch(
-        signupUserByOrganizationId({
-          organizationId,
-          body: signupBody,
+  }, [dispatch, organizationId, filter.wardId]);
+
+  const allLgas = (useSelector((s: RootState) =>
+    selectLGAsByState(stateId)(s)
+  ) ?? []) as { _id: string; name?: string; code?: string }[];
+  const coverageIds = (selectedElection as { coverage?: { type?: string; ids?: string[] } })?.coverage?.ids ?? [];
+  const isConstituencyElection = CONSTITUENCY_TYPES.includes((selectedElection?.type ?? "") as string);
+  const lgas = isConstituencyElection && coverageIds.length > 0
+    ? allLgas.filter((l) => coverageIds.some((id) => String(id) === String(l._id)))
+    : allLgas;
+  const wards = (useSelector((s: RootState) =>
+    selectWardsByLGA(filter.lgaId)(s)
+  ) ?? []) as { _id: string; name?: string; code?: string }[];
+  const pollingUnits = (useSelector((s: RootState) =>
+    selectPollingUnitsByWard(organizationId ?? "", filter.wardId)(s)
+  ) ?? []) as { _id: string; name?: string; code?: string }[];
+
+  const hasFilter = !!(filter.lgaId || filter.wardId || filter.pollingUnitId);
+
+  useEffect(() => {
+    if (!selectedElectionId) return;
+    if (hasFilter) {
+      const params: Record<string, string> = {};
+      if (filter.pollingUnitId) params.pollingUnitId = filter.pollingUnitId;
+      else if (filter.wardId) params.wardId = filter.wardId;
+      else if (filter.lgaId) params.lgaId = filter.lgaId;
+      dispatch(
+        getResultsByElection({
+          electionId: selectedElectionId,
+          params,
         })
-      ).unwrap();
-      refetchUsers();
-      setCreateUserSuccess(true);
-    } catch (err: unknown) {
-      setCreateUserError((err as { message?: string })?.message ?? "Failed to create user");
-    } finally {
-      setCreateUserLoading(false);
+      );
+    } else {
+      const arg =
+        isConstituencyElection && coverageIds.length > 0
+          ? { electionId: selectedElectionId, params: { lgaIds: coverageIds } }
+          : selectedElectionId;
+      dispatch(getAspirantTotalsByElection(arg));
     }
+  }, [dispatch, selectedElectionId, hasFilter, filter.lgaId, filter.wardId, filter.pollingUnitId, isConstituencyElection, coverageIds]);
+
+  useEffect(() => {
+    if (organizationId && selectedElectionId) {
+      const query: { stateId?: string; lgaId?: string; wardId?: string } = {};
+      if (filter.lgaId) query.lgaId = filter.lgaId;
+      else if (filter.wardId) query.wardId = filter.wardId;
+      else if (stateId) query.stateId = stateId;
+      dispatch(
+        getAllAccreditationByOrganization({
+          organizationId,
+          electionId: selectedElectionId,
+          query,
+        })
+      );
+      dispatch(
+        getOverVotingByOrganization({ organizationId, electionId: selectedElectionId })
+      );
+    }
+  }, [dispatch, organizationId, selectedElectionId, stateId, filter.lgaId, filter.wardId]);
+
+  // Real-time: refetch results when a result is saved for the selected election
+  useResultSocket(
+    selectedElectionId ? [selectedElectionId] : [],
+    (electionId) => {
+      if (electionId !== selectedElectionId) return;
+      if (hasFilter) {
+        const params: Record<string, string> = {};
+        if (filter.pollingUnitId) params.pollingUnitId = filter.pollingUnitId;
+        else if (filter.wardId) params.wardId = filter.wardId;
+        else if (filter.lgaId) params.lgaId = filter.lgaId;
+        dispatch(getResultsByElection({ electionId, params }));
+      } else {
+        const arg =
+          isConstituencyElection && coverageIds.length > 0
+            ? { electionId, params: { lgaIds: coverageIds } }
+            : electionId;
+        dispatch(getAspirantTotalsByElection(arg));
+      }
+      if (organizationId) {
+        const query: { stateId?: string; lgaId?: string; wardId?: string } = {};
+        if (filter.lgaId) query.lgaId = filter.lgaId;
+        else if (filter.wardId) query.wardId = filter.wardId;
+        else if (stateId) query.stateId = stateId;
+        dispatch(
+          getAllAccreditationByOrganization({
+            organizationId,
+            electionId,
+            query,
+          })
+        );
+        dispatch(getOverVotingByOrganization({ organizationId, electionId }));
+      }
+    },
+    () => {
+      if (organizationId) {
+        dispatch(
+          getElectionsByOrganizationId({
+            organizationId,
+            query: electionsQuery,
+          })
+        );
+      }
+    }
+  );
+
+  const aspirantTotalsParams =
+    !hasFilter && isConstituencyElection && coverageIds.length > 0
+      ? { lgaIds: coverageIds }
+      : undefined;
+  const aspirantTotalsData = useSelector((s: RootState) =>
+    !hasFilter && selectedElectionId
+      ? selectAspirantTotalsByElection(selectedElectionId, aspirantTotalsParams)(s)
+      : null
+  ) as {
+    aspirants?: Array<{
+      position: number;
+      positionLabel: string;
+      isLeading: boolean;
+      aspirant: { _id: string; name: string; partyCode: string; party: string };
+      totalVotes: number;
+    }>;
+  } | null;
+
+  const resultsKey = buildResultsByElectionKey(selectedElectionId, filter);
+  const resultsData = useSelector((s: RootState) =>
+    resultsKey ? (s.results.cache[resultsKey] as any[] | null) : null
+  ) as Array<{
+    aspirant?: { _id?: string; name?: string; partyCode?: string };
+    party?: { _id?: string; acronym?: string };
+    votes: number;
+  }> | null;
+
+  const aspirantTotalsLoading = useSelector((s: RootState) =>
+    !hasFilter && selectedElectionId
+      ? selectAspirantTotalsByElectionLoading(selectedElectionId, aspirantTotalsParams)(s)
+      : false
+  );
+  const resultsLoading = useSelector((s: RootState) =>
+    resultsKey ? selectLoadingByKey(resultsKey)(s) : false
+  );
+
+  const accrQuery = filter.lgaId
+    ? { lgaId: filter.lgaId }
+    : filter.wardId
+      ? { wardId: filter.wardId }
+      : stateId
+        ? { stateId }
+        : {};
+  const accreditationData = useSelector((s: RootState) =>
+    organizationId && selectedElectionId
+      ? selectAllAccreditationByOrganization(organizationId, selectedElectionId, Object.keys(accrQuery).length > 0 ? accrQuery : undefined)(s)
+      : null
+  ) as { totalAccreditedVoters?: number; accreditation?: Array<{ pollingUnit?: { _id?: string }; accreditedCount?: number }> } | null;
+
+  const overVotingData = useSelector((s: RootState) =>
+    organizationId && selectedElectionId
+      ? selectOverVotingByOrganization(organizationId, selectedElectionId)(s)
+      : null
+  ) as {
+    overVotingUnits?: Array<{ excess: number }>;
+  } | null;
+
+  const totalAccreditedVoters = (() => {
+    if (!accreditationData) return 0;
+    if (filter.pollingUnitId && Array.isArray(accreditationData.accreditation)) {
+      const match = accreditationData.accreditation.find(
+        (a) => String(a.pollingUnit?._id ?? "") === filter.pollingUnitId
+      );
+      return typeof match?.accreditedCount === "number" ? match.accreditedCount : 0;
+    }
+    return accreditationData.totalAccreditedVoters ?? 0;
+  })();
+
+  const loading = aspirantTotalsLoading || resultsLoading;
+
+  const parties = (useSelector((s: RootState) => selectParties(s)) ?? []) as {
+    _id?: string;
+    acronym?: string;
+    logo?: string;
+    color?: string;
+    name?: string;
+  }[];
+
+  const winningParties = (() => {
+    if (hasFilter && Array.isArray(resultsData)) {
+      const tally = new Map<
+        string,
+        { name: string; partyCode: string; totalVotes: number }
+      >();
+      for (const r of resultsData) {
+        const code = (
+          r.aspirant?.partyCode ?? r.party?.acronym ?? ""
+        ).toUpperCase();
+        if (!code) continue;
+        const key = r.aspirant?._id ? `${r.aspirant._id}::${code}` : `party::${code}`;
+        const name = r.aspirant?.name ?? code;
+        const existing = tally.get(key);
+        if (existing) {
+          existing.totalVotes += r.votes ?? 0;
+        } else {
+          tally.set(key, { name, partyCode: code, totalVotes: r.votes ?? 0 });
+        }
+      }
+      const arr = [...tally.entries()].map(([k, v]) => ({
+        ...v,
+        id: k,
+      }));
+      arr.sort((a, b) => b.totalVotes - a.totalVotes);
+      return arr;
+    }
+    const asp = aspirantTotalsData?.aspirants ?? [];
+    return asp.map((a, i) => ({
+      id: a.aspirant._id,
+      name: a.aspirant.name,
+      partyCode: a.aspirant.partyCode || "",
+      totalVotes: a.totalVotes,
+      position: i + 1,
+      isLeading: a.isLeading,
+    }));
+  })();
+
+  const totalVotes = winningParties.reduce((s, p) => s + (p.totalVotes ?? 0), 0);
+  const totalOverVoting = totalAccreditedVoters > 0 && totalVotes > totalAccreditedVoters
+    ? totalVotes - totalAccreditedVoters
+    : (overVotingData?.overVotingUnits ?? []).reduce((s, u) => s + (u.excess ?? 0), 0);
+  const maxPartyVotes = Math.max(...winningParties.map((p) => p.totalVotes ?? 0), 1);
+  const barScale = maxPartyVotes;
+
+  const handleClearFilter = () => {
+    setFilter({ lgaId: "", wardId: "", pollingUnitId: "" });
   };
 
   return (
-    <div className="dash-page">
-      <div className="dash-page__top">
-        <div>
-          <p className="dash-page__breadcrumb">
-            EMS
-            {organizationName ? ` / ${organizationName}` : ""}
-            {stateName ? ` / ${stateName}` : ""}
-            {" / Dashboard"}
-          </p>
-          <h1 className="dash-page__title">Dashboard</h1>
-        </div>
-        <div className="dash-page__actions">
-          <button type="button" className="dash-page__btn dash-page__btn--outline">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Filter date
-          </button>
-          <button type="button" className="dash-page__btn dash-page__btn--solid">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Export
-          </button>
-        </div>
+    <div className="result-page-wrap">
+      <div>
+        <p className="dash-page__breadcrumb">EMS / Result Winning Analysis</p>
+        <h1 className="dash-page__title">Result Winning Analysis</h1>
       </div>
 
-      <div className="dash-cards">
-        <div className="dash-card">
-          <h3 className="dash-card__title">Users</h3>
-          <p className="dash-card__value">{(orgUsers ?? []).length}</p>
-          <p className="dash-card__meta">In this organization</p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevronCard />
+      <div className="result-dash-filters">
+        {elections.length > 0 && (
+          <div className="result-dash-filters__item">
+            <label>Election type</label>
+            <select
+              value={electionTypeFilter}
+              onChange={(e) => {
+                setElectionTypeFilter(e.target.value);
+                setSelectedElectionId("");
+                setFilter({ lgaId: "", wardId: "", pollingUnitId: "" });
+              }}
+            >
+              {electionTypeOptions.map((opt) => (
+                <option key={opt.value || "all"} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
+        )}
+        <div className="result-dash-filters__item">
+          <label>Election</label>
+          <select
+            value={selectedElectionId}
+            onChange={(e) => {
+              setSelectedElectionId(e.target.value);
+              setFilter({ lgaId: "", wardId: "", pollingUnitId: "" });
+            }}
+          >
+            <option value="">Select election…</option>
+            {filteredElections.map((e) => (
+              <option key={e._id} value={e._id}>
+                {e.name ?? e._id}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="dash-card">
-          <h3 className="dash-card__title">States</h3>
-          <p className="dash-card__value">{(orgStates ?? []).length}</p>
-          <p className="dash-card__meta">Under this organization</p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevronCard />
-          </div>
-        </div>
-        <div className="dash-card">
-          <h3 className="dash-card__title">Polling Units</h3>
-          <p className="dash-card__value">
-            {puStatsLoading ? "—" : (puStats?.total ?? 0).toLocaleString()}
-          </p>
-          <p className="dash-card__meta">
-            {puStatsLoading ? "Loading…" : (
-              <>
-                <span className="dash-card__meta-assigned">{(puStats?.assigned ?? 0).toLocaleString()} assigned</span>
-                {" · "}
-                <span className="dash-card__meta-remaining">{(puStats?.remaining ?? 0).toLocaleString()} remaining</span>
-              </>
-            )}
-          </p>
-          <div className="dash-card__row">
-            <span />
-            <IconChevronCard />
-          </div>
-        </div>
-        <div className="dash-card dash-card--banner">
-          <div className="dash-card__banner-inner">
-            <h3 className="dash-card__banner-title">Manage Party Agents</h3>
-            <div className="dash-card__banner-actions">
-              <button
-                type="button"
-                className="dash-card__cta dash-card__cta--primary"
-                onClick={handleOpenCreateUser}
+        {selectedElectionId && stateId && (
+          <>
+            <div className="result-dash-filters__item">
+              <label>{isConstituencyElection && coverageIds.length > 0 ? "Constituency (LGA)" : "LGA"}</label>
+              <select
+                value={filter.lgaId}
+                onChange={(e) =>
+                  setFilter({
+                    ...filter,
+                    lgaId: e.target.value,
+                    wardId: "",
+                    pollingUnitId: "",
+                  })
+                }
               >
-                Create Party Agent
-              </button>
+                <option value="">
+                  {isConstituencyElection && coverageIds.length > 0 ? "All in constituency" : "All LGAs"}
+                </option>
+                {lgas.map((l) => (
+                  <option key={l._id} value={l._id}>
+                    {l.name ?? l.code ?? l._id}
+                  </option>
+                ))}
+              </select>
             </div>
-            <p className="dash-card__banner-meta">Create party agents in this organization and manage the list below</p>
-          </div>
-        </div>
+            <div className="result-dash-filters__item">
+              <label>Ward</label>
+              <select
+                value={filter.wardId}
+                onChange={(e) =>
+                  setFilter({ ...filter, wardId: e.target.value, pollingUnitId: "" })
+                }
+                disabled={!filter.lgaId}
+              >
+                <option value="">All Wards</option>
+                {wards.map((w) => (
+                  <option key={w._id} value={w._id}>
+                    {w.name ?? w.code ?? w._id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="result-dash-filters__item">
+              <label>Polling Unit</label>
+              <select
+                value={filter.pollingUnitId}
+                onChange={(e) =>
+                  setFilter({ ...filter, pollingUnitId: e.target.value })
+                }
+                disabled={!filter.wardId}
+              >
+                <option value="">All Polling Units</option>
+                {pollingUnits.map((pu) => (
+                  <option key={pu._id} value={pu._id}>
+                    {pu.name ?? pu.code ?? pu._id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {(filter.lgaId || filter.wardId || filter.pollingUnitId) && (
+              <button type="button" onClick={handleClearFilter} className="result-dash-filters__btn">
+                Clear filter
+              </button>
+            )}
+          </>
+        )}
       </div>
 
-      <div className="dash-features">
-        <Link to="/dashboard/user-management" className="dash-feature">
-          <div className="dash-feature__row">
-            <IconUsers />
-            <IconChevronFeature />
-          </div>
-          <h3 className="dash-feature__title">Agents</h3>
-          <p className="dash-feature__desc">{(orgUsers ?? []).length} Agent{(orgUsers ?? []).length !== 1 ? "s" : ""} in this organization</p>
-        </Link>
-        <div className="dash-feature">
-          <div className="dash-feature__row">
-            <IconMapPin />
-            <IconChevronFeature />
-          </div>
-          <h3 className="dash-feature__title">States</h3>
-          <p className="dash-feature__desc">{(orgStates ?? []).length} state{(orgStates ?? []).length !== 1 ? "s" : ""} under this organization</p>
+      {!selectedElectionId ? (
+        <div className="result-chart" style={{ padding: "3rem", textAlign: "center", color: "#6b7280" }}>
+          Select an election to view winning analysis.
         </div>
-        <a href="#reports" className="dash-feature">
-          <div className="dash-feature__row">
-            <IconFile />
-            <IconChevronFeature />
-          </div>
-          <h3 className="dash-feature__title">Reports</h3>
-          <p className="dash-feature__desc">Create and view election reports</p>
-        </a>
-        <a href="#results" className="dash-feature">
-          <div className="dash-feature__row">
-            <IconBarChart />
-            <IconChevronFeature />
-          </div>
-          <h3 className="dash-feature__title">Results</h3>
-          <p className="dash-feature__desc">Collate and manage result sheets</p>
-        </a>
-      </div>
-
-      {/* Create Party Agent modal - same as admin OrganizationDetail */}
-      {showCreateUserModal && (
-        <div
-          className="dash-modal-backdrop"
-          onClick={handleCloseCreateUser}
-          onKeyDown={(e) => e.key === "Escape" && handleCloseCreateUser()}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="dash-modal dash-modal--form-large" onClick={(e) => e.stopPropagation()}>
-            {createUserSuccess ? (
-              <div className="dash-modal__success">
-                <div className="dash-modal__success-icon">✓</div>
-                <h3 className="dash-modal__success-title">User created</h3>
-                <p className="dash-modal__success-text">The user can now sign in.</p>
-                <button
-                  type="button"
-                  className="dash-page__btn dash-page__btn--solid"
-                  onClick={handleCloseCreateUser}
-                >
-                  Done
-                </button>
-              </div>
+      ) : electionsLoading || loading ? (
+        <div className="result-chart results-pu-cards-loading" style={{ padding: "3rem", flexDirection: "column" }}>
+          <span className="results-pu-cards-loading__spinner" />
+          <span className="results-pu-cards-loading__text">Loading results…</span>
+        </div>
+      ) : (
+        <div className="result-page">
+          <aside className="result-list">
+            <h2 className="result-list__title">Winning Parties</h2>
+            {winningParties.length === 0 ? (
+              <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>No results for this selection.</p>
             ) : (
               <>
-            <h3 className="dash-modal__title">Create Party Agent</h3>
-            <p className="dash-modal__subtitle">
-              Create a new party agent for <strong>{organizationName ?? "this organization"}</strong>. The party Agent can sign in with email, phone number  and password.
-            </p>
-            <form onSubmit={handleCreateUserSubmit} className="dash-modal__form dash-modal__form--create-user">
-              {/* Role & Assignment section */}
-              <div className="dash-modal__section">
-                <div className="dash-modal__section-header">
-                  <h4 className="dash-modal__section-title">Role & Assignment</h4>
-                  {needsState && (
-                    <button
-                      type="button"
-                      className={`dash-modal__toggle-details ${showAssignedDetails ? "dash-modal__toggle-details--on" : ""}`}
-                      onClick={() => setShowAssignedDetails((v) => !v)}
-                      title={showAssignedDetails ? "Hide assigned agent details" : "Show assigned agent details"}
+                {(winningParties.length > 4 ? winningParties.slice(0, 4) : winningParties).map((party, i) => {
+                  const pct =
+                    totalVotes > 0
+                      ? (((party.totalVotes ?? 0) / totalVotes) * 100).toFixed(1)
+                      : "0";
+                  const status =
+                    i === 0
+                      ? (selectedElection?.status === "concluded" ? "Winner" : "Leading")
+                      : (POSITION_LABELS[i] ?? `${i + 1}th`);
+                  const color = DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+                  const isLeading = i === 0;
+                  return (
+                    <div
+                      key={party.id ?? i}
+                      className={`result-list__item${isLeading ? " result-list__item--leading" : ""}`}
                     >
-                      {showAssignedDetails ? "Hide" : "Show"} assigned details
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="dash-modal__field--full">
-                <SearchableSelect
-                  id="cu-role"
-                  label="Role"
-                  value={createUserForm.role}
-                  onChange={(val) => {
-                    setCreateUserForm((f) => ({
-                      ...f,
-                      role: val,
-                      state: ORG_LEVEL_ROLES.includes(val) ? "" : f.state,
-                      lga: STATE_LEVEL_ROLES.includes(val) ? "" : f.lga,
-                      ward: STATE_LEVEL_ROLES.includes(val) || val === LGA_COLLATION_ROLE ? "" : f.ward,
-                      pollingUnit: val === WARD_COLLATION_ROLE ? "" : f.pollingUnit,
-                    }));
-                  }}
-                  options={createUserRoles}
-                  placeholder="Search or select role..."
-                  required
-                />
-              </div>
-              {needsState && (
-                <div className="dash-modal__location-cell">
-                  <SearchableSelect
-                    id="cu-state"
-                    label="State"
-                    value={createUserForm.state}
-                    onChange={(val) =>
-                      setCreateUserForm((f) => ({
-                        ...f,
-                        state: val,
-                        lga: "",
-                        ward: "",
-                        pollingUnit: "",
-                      }))
-                    }
-                    options={[
-                      { value: "", label: "Select state" },
-                      ...(orgStates ?? []).map((s: { _id?: string; name?: string; code?: string }) => ({
-                        value: s._id ?? s.code ?? s.name ?? "",
-                        label: s.name ?? s.code ?? "—",
-                      })),
-                    ]}
-                    placeholder="Search or select state..."
-                    required={needsState}
-                  />
-                  {showAssignedDetails && createUserForm.state && (
-                    <div className="dash-modal__pu-assigned dash-modal__pu-assigned--inline">
-                      {stateUsersLoading ? (
-                        <span className="dash-modal__pu-assigned-text">Loading...</span>
-                      ) : stateAssignedUsers.length > 0 ? (
-                        <div className="dash-agent-cards">
-                          {stateAssignedUsers.map((u, i) => (
-                            <AssignedAgentCard key={(u as { _id?: string })?._id ?? i} agent={u as AssignedAgent} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="dash-modal__pu-assigned-text dash-modal__pu-assigned-text--empty">
-                          No user has been assigned to this state
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {needsLga && (
-                <div className="dash-modal__location-cell">
-                  <SearchableSelect
-                    id="cu-lga"
-                    label="LGA"
-                    value={createUserForm.lga}
-                    onChange={(val) =>
-                      setCreateUserForm((f) => ({
-                        ...f,
-                        lga: val,
-                        ward: "",
-                        pollingUnit: "",
-                      }))
-                    }
-                    options={createLgas.map((l) => ({
-                      value: l._id ?? l.code ?? l.name ?? "",
-                      label: l.name ?? l.code ?? "—",
-                    }))}
-                    placeholder="Search or select LGA..."
-                    required={needsLga}
-                  />
-                  {showAssignedDetails && createUserForm.lga && (
-                    <div className="dash-modal__pu-assigned dash-modal__pu-assigned--inline">
-                      {lgaUsersLoading ? (
-                        <span className="dash-modal__pu-assigned-text">Loading...</span>
-                      ) : lgaAssignedUsers.length > 0 ? (
-                        <div className="dash-agent-cards">
-                          {lgaAssignedUsers.map((u, i) => (
-                            <AssignedAgentCard key={(u as { _id?: string })?._id ?? i} agent={u as AssignedAgent} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="dash-modal__pu-assigned-text dash-modal__pu-assigned-text--empty">
-                          No user has been assigned to this LGA
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {needsWard && (
-                <div className="dash-modal__location-cell">
-                  <SearchableSelect
-                    id="cu-ward"
-                    label="Ward"
-                    value={createUserForm.ward}
-                    onChange={(val) =>
-                      setCreateUserForm((f) => ({
-                        ...f,
-                        ward: val,
-                        pollingUnit: "",
-                      }))
-                    }
-                    options={createWards.map((w) => ({
-                      value: w._id ?? w.code ?? w.name ?? "",
-                      label: w.name ?? w.code ?? "—",
-                    }))}
-                    placeholder="Search or select ward..."
-                    required={needsWard}
-                  />
-                  {showAssignedDetails && createUserForm.ward && (
-                    <div className="dash-modal__pu-assigned dash-modal__pu-assigned--inline">
-                      {wardUsersLoading ? (
-                        <span className="dash-modal__pu-assigned-text">Loading...</span>
-                      ) : wardAssignedUsers.length > 0 ? (
-                        <div className="dash-agent-cards">
-                          {wardAssignedUsers.map((u, i) => (
-                            <AssignedAgentCard key={(u as { _id?: string })?._id ?? i} agent={u as AssignedAgent} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="dash-modal__pu-assigned-text dash-modal__pu-assigned-text--empty">
-                          No user has been assigned to this ward
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {needsPollingUnit && (
-                <div className="dash-modal__location-cell">
-                  <SearchableSelect
-                    id="cu-pollingUnit"
-                    label="Polling Unit"
-                    value={createUserForm.pollingUnit}
-                    onChange={(val) =>
-                      setCreateUserForm((f) => ({
-                        ...f,
-                        pollingUnit: val,
-                      }))
-                    }
-                    options={createPollingUnits.map((pu) => ({
-                      value: pu._id ?? pu.code ?? pu.name ?? "",
-                      label: pu.name ?? pu.code ?? "—",
-                    }))}
-                    placeholder="Search or select polling unit..."
-                    required={needsPollingUnit}
-                  />
-                  {showAssignedDetails && createUserForm.pollingUnit && (
-                    <div className="dash-modal__pu-assigned dash-modal__pu-assigned--inline">
-                      {puUsersLoading ? (
-                        <span className="dash-modal__pu-assigned-text">Loading...</span>
-                      ) : puAssignedUsers.length > 0 ? (
-                        <div className="dash-agent-cards">
-                          {puAssignedUsers.map((u, i) => (
-                            <AssignedAgentCard key={(u as { _id?: string })?._id ?? i} agent={u as AssignedAgent} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="dash-modal__pu-assigned-text dash-modal__pu-assigned-text--empty">
-                          No user has been assigned to this polling unit
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Personal Information section */}
-              <div className="dash-modal__section">
-                <h4 className="dash-modal__section-title">Personal Information</h4>
-              </div>
-              <div className="dash-modal__field dash-modal__field--full">
-                <label>Profile picture (optional)</label>
-                <div className="dash-modal__photo-wrap">
-                  <div className="dash-modal__photo-preview">
-                    {createUserForm.photo ? (
-                      <img src={createUserForm.photo} alt="Preview" className="dash-modal__photo-img" />
-                    ) : (
-                      <span className="dash-modal__photo-placeholder">No photo</span>
-                    )}
-                  </div>
-                  {createUserForm.photo ? (
-                    <button
-                      type="button"
-                      className="dash-modal__photo-delete"
-                      onClick={() => setCreateUserForm((f) => ({ ...f, photo: "" }))}
-                      title="Remove photo"
-                    >
-                      <IconTrash />
-                    </button>
-                  ) : (
-                    <label htmlFor="cu-photo" className="dash-modal__photo-camera">
-                      <IconCamera />
-                      <span>Add photo</span>
-                      <input
-                        id="cu-photo"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={handlePhotoChange}
-                        className="dash-modal__photo-input"
+                      <PartyThumb
+                        party={{
+                          partyCode: party.partyCode,
+                          name: party.name ?? party.partyCode,
+                          color,
+                        }}
+                        parties={parties}
                       />
-                    </label>
-                  )}
-                </div>
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="cu-firstName">First name</label>
-                <input
-                  id="cu-firstName"
-                  type="text"
-                  value={createUserForm.firstName}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, firstName: e.target.value }))}
-                  placeholder="e.g. John"
-                  required
-                />
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="cu-lastName">Last name</label>
-                <input
-                  id="cu-lastName"
-                  type="text"
-                  value={createUserForm.lastName}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, lastName: e.target.value }))}
-                  placeholder="e.g. Doe"
-                  required
-                />
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="cu-email">Email</label>
-                <input
-                  id="cu-email"
-                  type="email"
-                  value={createUserForm.email}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="e.g. john@example.com"
-                  required
-                />
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="cu-phone">Phone number</label>
-                <input
-                  id="cu-phone"
-                  type="text"
-                  value={createUserForm.phoneNumber}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, phoneNumber: e.target.value }))}
-                  placeholder="e.g. +2348012345678"
-                  required
-                />
-              </div>
-              <SearchableSelect
-                id="cu-sex"
-                label="Sex"
-                value={createUserForm.sex}
-                onChange={(val) =>
-                  setCreateUserForm((f) => ({ ...f, sex: val as "male" | "female" }))
-                }
-                options={[
-                  { value: "male", label: "Male" },
-                  { value: "female", label: "Female" },
-                ]}
-                placeholder="Search or select sex..."
-                required
-              />
-              <div className="dash-modal__field">
-                <label htmlFor="cu-dob">Date of birth</label>
-                <input
-                  id="cu-dob"
-                  type="date"
-                  value={createUserForm.dateOfBirth}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
-                  max={new Date().toISOString().split("T")[0]}
-                  required
-                />
-              </div>
-              <div className="dash-modal__field">
-                <label htmlFor="cu-password">Password</label>
-                <input
-                  id="cu-password"
-                  type="password"
-                  value={createUserForm.password}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Minimum 6 characters"
-                  required
-                  minLength={6}
-                />
-              </div>
-              <div className="dash-modal__field dash-modal__field--full">
-                <label htmlFor="cu-description">Description (optional)</label>
-                <textarea
-                  id="cu-description"
-                  value={createUserForm.description}
-                  onChange={(e) => setCreateUserForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="e.g. Executive officer for Rivers state"
-                  rows={3}
-                />
-              </div>
-              {createUserError && (
-                <div className="dash-modal__error-box dash-modal__field--full">
-                  <span className="dash-modal__error-icon">!</span>
-                  <span className="dash-modal__error-text">{createUserError}</span>
-                </div>
-              )}
-              <div className="dash-modal__actions">
-                <button type="button" className="dash-page__btn dash-page__btn--outline" onClick={handleCloseCreateUser}>
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="dash-page__btn dash-page__btn--solid"
-                  disabled={createUserLoading}
-                >
-                  {createUserLoading ? "Creating..." : "Create Party Agent"}
-                </button>
-              </div>
-            </form>
+                      <div className="result-list__info">
+                        <p className="result-list__name">{party.name ?? party.partyCode}</p>
+                        <p className="result-list__meta">
+                          {(party.totalVotes ?? 0).toLocaleString()} votes · {pct}%
+                        </p>
+                        <span className="result-list__status">{status}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {winningParties.length > 4 && (
+                  <button
+                    type="button"
+                    className="result-list__view-more"
+                    onClick={() => setShowViewMorePartiesModal(true)}
+                  >
+                    View More ({winningParties.length - 4} more)
+                  </button>
+                )}
               </>
             )}
-          </div>
+          </aside>
+
+          {/* View More Parties Modal */}
+          {showViewMorePartiesModal && (
+            <div
+              className="result-view-more-backdrop"
+              onClick={() => setShowViewMorePartiesModal(false)}
+              aria-hidden
+            >
+              <div
+                className="result-view-more-modal"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="result-view-more-modal__header">
+                  <h3 className="result-view-more-modal__title">All Winning Parties</h3>
+                  <button
+                    type="button"
+                    className="result-view-more-modal__close"
+                    onClick={() => setShowViewMorePartiesModal(false)}
+                    aria-label="Close"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="result-view-more-modal__body">
+                  {winningParties.map((party, i) => {
+                    const pct =
+                      totalVotes > 0
+                        ? (((party.totalVotes ?? 0) / totalVotes) * 100).toFixed(1)
+                        : "0";
+                    const status =
+                      i === 0
+                        ? (selectedElection?.status === "concluded" ? "Winner" : "Leading")
+                        : (POSITION_LABELS[i] ?? `${i + 1}th`);
+                    const color = DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+                    const isLeading = i === 0;
+                    return (
+                      <div
+                        key={party.id ?? i}
+                        className={`result-list__item${isLeading ? " result-list__item--leading" : ""}`}
+                      >
+                        <PartyThumb
+                          party={{
+                            partyCode: party.partyCode,
+                            name: party.name ?? party.partyCode,
+                            color,
+                          }}
+                          parties={parties}
+                        />
+                        <div className="result-list__info">
+                          <p className="result-list__name">{party.name ?? party.partyCode}</p>
+                          <p className="result-list__meta">
+                            {(party.totalVotes ?? 0).toLocaleString()} votes · {pct}%
+                          </p>
+                          <span className="result-list__status">{status}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <section className="result-chart result-chart--dashboard">
+            <div className="result-chart__header">
+              <div className="result-chart__period">
+                <span
+                  className="result-chart__period-btn result-chart__period-btn--active"
+                  style={{ cursor: "default" }}
+                >
+                  {hasFilter
+                    ? filter.pollingUnitId
+                      ? "Polling Unit"
+                      : filter.wardId
+                        ? "Ward"
+                        : "LGA"
+                    : "Election"}
+                </span>
+              </div>
+              <span className="result-chart__label">
+                Votes by party (bars scaled to total votes)
+              </span>
+            </div>
+
+            <div className="result-chart__stats">
+              <div className="result-chart__stat">
+                <span className="result-chart__stat-dot result-chart__stat-dot--cream" />
+                <div>
+                  <div className="result-chart__stat-label">Total Accredited Voters</div>
+                  <div className="result-chart__stat-value">
+                    {totalAccreditedVoters.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="result-chart__stat">
+                <span className="result-chart__stat-dot result-chart__stat-dot--amber" />
+                <div>
+                  <div className="result-chart__stat-label">Total Votes</div>
+                  <div className="result-chart__stat-value">
+                    {totalVotes.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div className="result-chart__stat">
+                <span className="result-chart__stat-dot result-chart__stat-dot--amber" />
+                <div>
+                  <div className="result-chart__stat-label">Leading Party</div>
+                  <div className="result-chart__stat-value">
+                    {winningParties[0]?.partyCode ?? "—"}
+                  </div>
+                </div>
+              </div>
+              <div className="result-chart__stat">
+                <span
+                  className="result-chart__stat-dot"
+                  style={{ background: totalOverVoting > 0 ? "#ef4444" : "#22c55e" }}
+                />
+                <div>
+                  <div className="result-chart__stat-label">Overvoting</div>
+                  <div className="result-chart__stat-value" style={{ color: totalOverVoting > 0 ? "#dc2626" : undefined }}>
+                    {totalOverVoting > 0 ? `+${totalOverVoting.toLocaleString()}` : "0"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="result-chart__chart">
+              <div className="result-chart__bars">
+                {winningParties.length === 0 ? (
+                  <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>No data</p>
+                ) : (
+                  winningParties.map((party, i) => {
+                    const votes = party.totalVotes ?? 0;
+                    const BAR_MAX_HEIGHT = 200;
+                    const heightRatio = barScale > 0 ? Math.min(1, votes / barScale) : 0;
+                    const barHeightPx = Math.max(4, Math.round(heightRatio * BAR_MAX_HEIGHT));
+                    const pct = totalVotes > 0 ? ((votes / totalVotes) * 100).toFixed(1) : "0";
+                    const isLeading = i === 0;
+                    return (
+                      <div key={party.id ?? i} className="result-chart__bar-wrap">
+                        <div className="result-chart__bar-row">
+                          <span className="result-chart__bar-pct">{pct}%</span>
+                          <div
+                            className={`result-chart__bar ${
+                              isLeading
+                                ? "result-chart__bar--highlight"
+                                : "result-chart__bar--default"
+                            }`}
+                            style={{
+                              height: `${barHeightPx}px`,
+                            }}
+                          />
+                          <span className="result-chart__bar-votes" title={`${votes.toLocaleString()} votes (${pct}%)`}>
+                            {votes.toLocaleString()}
+                          </span>
+                        </div>
+                        <span className="result-chart__axis">
+                          {party.partyCode || "?"}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </section>
         </div>
       )}
     </div>

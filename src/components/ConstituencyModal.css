@@ -1,0 +1,235 @@
+/* Constituency Create/Edit Modal */
+.constituency-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  overflow-y: auto;
+  animation: constituency-modal-fade-in 0.2s ease;
+}
+
+@keyframes constituency-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.constituency-modal {
+  background: var(--ems-bg-elevated);
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 2rem);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin: auto;
+  overflow: hidden;
+  animation: constituency-modal-slide-in 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  box-sizing: border-box;
+}
+
+@keyframes constituency-modal-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.constituency-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--ems-border);
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.constituency-modal__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ems-text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.constituency-modal__close {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--ems-bg-input);
+  color: var(--ems-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.constituency-modal__close:hover {
+  background: var(--ems-primary-light);
+  color: var(--ems-text);
+}
+
+.constituency-modal__body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.constituency-modal__error {
+  padding: 0.75rem 1rem;
+  background: rgba(185, 28, 28, 0.2);
+  color: #fca5a5;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.constituency-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.constituency-modal__field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ems-text-muted);
+}
+
+.constituency-modal__field input,
+.constituency-modal__field select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--ems-border);
+  border-radius: 0.5rem;
+  background: var(--ems-bg-input);
+  color: var(--ems-text);
+  font-family: inherit;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.constituency-modal__field input:focus,
+.constituency-modal__field select:focus {
+  outline: none;
+  border-color: var(--ems-accent);
+  box-shadow: 0 0 0 2px var(--ems-accent-light);
+}
+
+.constituency-modal__coverage-box {
+  max-height: 180px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--ems-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--ems-bg-input);
+  margin-top: 0.5rem;
+  min-width: 0;
+}
+
+.constituency-modal__coverage-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--ems-text);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.constituency-modal__coverage-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.constituency-modal__coverage-option:hover {
+  color: var(--ems-accent);
+}
+
+.constituency-modal__coverage-option input {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.constituency-modal__coverage-empty {
+  color: var(--ems-text-muted);
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+}
+
+.constituency-modal__footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--ems-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.constituency-modal__btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.constituency-modal__btn--secondary {
+  background: var(--ems-bg-input);
+  border: 1px solid var(--ems-border);
+  color: var(--ems-text);
+}
+
+.constituency-modal__btn--secondary:hover {
+  background: var(--ems-primary-light);
+  border-color: var(--ems-accent);
+}
+
+.constituency-modal__btn--primary {
+  background: var(--ems-accent);
+  border: none;
+  color: #fff;
+}
+
+.constituency-modal__btn--primary:hover:not(:disabled) {
+  background: var(--ems-accent-hover);
+}
+
+.constituency-modal__btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

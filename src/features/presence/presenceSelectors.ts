@@ -110,6 +110,24 @@ export const selectReportPresenceLoading = (
     buildKey("presence/reportMyPresence", { pollingUnitId, electionId })
   ] ?? false;
 
+export const selectListCollationPresence = (params: {
+  electionId?: string;
+  wardId?: string;
+  lgaId?: string;
+  stateId?: string;
+}) => (state: RootState) =>
+  state.presence.cache[
+    buildKey("presence/listCollationPresence", params)
+  ] as { presence: Array<{ user?: { _id?: string; id?: string } }>; count: number } | undefined;
+
+export const selectListCollationPresenceLoading = (params: {
+  electionId?: string;
+  wardId?: string;
+  lgaId?: string;
+  stateId?: string;
+}) => (state: RootState) =>
+  state.presence.loading[buildKey("presence/listCollationPresence", params)] ?? false;
+
 // Generic
 export const selectByKey = (key: string) => (state: RootState) =>
   state.presence.cache[key];

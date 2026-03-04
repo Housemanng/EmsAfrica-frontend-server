@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
+import { store } from "../app/store";
 import {
   getElections,
   getParties,
@@ -63,6 +64,43 @@ import {
 import { selectSheetsByElectionAndPollingUnit } from "../features/resultSheets/resultSheetSelectors";
 import { usePresenceSocket } from "../hooks/usePresenceSocket";
 import { useResultSocket } from "../hooks/useResultSocket";
+import {
+  createReport,
+  REPORT_CATEGORIES,
+  REPORT_CATEGORY_LABELS,
+  REPORT_ITEMS_BY_CATEGORY,
+  type ReportCategory,
+} from "../features/reports/reportApi";
+import {
+  getMyMessages,
+  getMessageById,
+  getThread,
+  replyToMessage,
+  sendDirectMessage,
+  clearOpenMessage,
+  selectInbox,
+  selectInboxLoading,
+  selectThreads,
+  selectThreadLoading,
+  selectUnreadCount,
+  selectOpenMessage,
+  selectOpenMessageLoading,
+  selectReplyError,
+  selectOnlineUserIds,
+  selectTypingUserId,
+  appendToThread,
+  setOnlineUsers,
+  setTypingUser,
+  socketNewMessage,
+  socketNewReply,
+} from "../features/messages";
+import { getSocket } from "../services/socket";
+import { playMessageNotificationSound } from "../services/notificationSound";
+import { getRegularAdminsByOrganizationId } from "../features/user/userApi";
+import { selectRegularAdminsByOrganizationId } from "../features/user/userSelectors";
+import { FiSend } from "react-icons/fi";
+import { MessageStatusIcon } from "../components/MessageStatusIcon";
+import ShareResultModal from "../components/ShareResultModal";
 import "./Results.css";
 
 /* Icons for polling unit and election cards */
@@ -111,6 +149,22 @@ const IconFlag = () => (
   >
     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
     <line x1="4" y1="22" x2="4" y2="15" />
+  </svg>
+);
+const IconShare = () => (
+  <svg
+    className="results-pu-card__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
   </svg>
 );
 const IconUserPlus = () => (
@@ -421,6 +475,7 @@ function PoElectionCard({
   role,
   level,
   locationId,
+  onSharePrint,
 }: {
   el: {
     _id: string;
@@ -460,6 +515,7 @@ function PoElectionCard({
   role?: string;
   level?: string | null;
   locationId?: string | null;
+  onSharePrint?: (electionId: string) => void;
 }) {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -941,7 +997,11 @@ function PoElectionCard({
                         return (collEntry?.votes ?? null) === null;
                       },
                     );
-                    if (!hasUnsavedAspirants && !selectedFile) return null;
+                    const hasResultsToShare =
+                      (collationResults.some((r) => (r.votes ?? 0) > 0) ||
+                        (aspirantTotals?.aspirants ?? []).some((a) => (a.totalVotes ?? 0) > 0)) &&
+                      (expandedAspirants?.length ?? 0) > 0;
+                    if (!hasUnsavedAspirants && !selectedFile && !hasResultsToShare) return null;
                     return (
                       <div className="results-actions__btns">
                         {/* Save all votes button — only shown when there are unsaved aspirants */}
@@ -1022,6 +1082,33 @@ function PoElectionCard({
                             )}
                           </button>
                         )}
+                        {/* Share / Print result — when we have results to display */}
+                        {hasResultsToShare && onSharePrint && (
+                          <button
+                            type="button"
+                            className="results-btn results-btn--share-print"
+                            onClick={() => onSharePrint(el._id)}
+                            title="Share / Print result"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              width="14"
+                              height="14"
+                              style={{ flexShrink: 0 }}
+                            >
+                              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                              <path d="M4 22h16" />
+                              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                            </svg>
+                            Share / Print result
+                          </button>
+                        )}
                       </div>
                     );
                   })()}
@@ -1080,6 +1167,26 @@ export default function Results() {
   const [showAccEndConfirm, setShowAccEndConfirm] = useState(false);
   const [showOverVotingModal, setShowOverVotingModal] = useState(false);
 
+  // ── Messages modal state ──────────────────────────────────────────────────
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const [showSidebarDrawer, setShowSidebarDrawer] = useState(false);
+  const msgBottomRef = useRef<HTMLDivElement>(null);
+
+  // ── Share / Print result modal ─────────────────────────────────────────────
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareElectionIdForModal, setShareElectionIdForModal] = useState<string | null>(null);
+
+  // ── Report modal state ────────────────────────────────────────────────────
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportElectionId, setReportElectionId] = useState<string>("");
+  const [reportCategory, setReportCategory] = useState<ReportCategory | "">("");
+  const [reportSelectedItems, setReportSelectedItems] = useState<string[]>([]);
+  const [reportNotes, setReportNotes] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportMsg, setReportMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const organizationId =
     (user as { organization?: { _id?: string; id?: string } })?.organization
       ?._id ??
@@ -1108,12 +1215,25 @@ export default function Results() {
   const showElectionsAccordion = true;
 
   const electionsFromResults = useSelector(selectElections) ?? [];
-  const electionsWithTotals =
-    useSelector(
-      selectElectionsByOrganizationId(organizationId ?? "", {
-        includeResults: true,
-      }),
-    ) ?? [];
+  // Pass location so backend filters to elections that apply to this agent
+  const electionsQuery = useMemo(() => {
+    const q: { includeResults: boolean; lgaId?: string; wardId?: string; pollingUnitId?: string } = {
+      includeResults: true,
+    };
+    if (level === "polling_unit" && locationIdForRole) {
+      q.pollingUnitId = locationIdForRole;
+    } else if (level === "ward" && locationIdForRole) {
+      q.wardId = locationIdForRole;
+    } else if (level === "lga" && locationIdForRole) {
+      q.lgaId = locationIdForRole;
+    }
+    return q;
+  }, [level, locationIdForRole]);
+  const _selectElectionsByOrg = useMemo(
+    () => selectElectionsByOrganizationId(organizationId ?? "", electionsQuery),
+    [organizationId, electionsQuery],
+  );
+  const electionsWithTotals = useSelector(_selectElectionsByOrg) ?? [];
   const elections =
     (electionsWithTotals?.length
       ? electionsWithTotals
@@ -1125,9 +1245,14 @@ export default function Results() {
     | Array<{ acronym?: string; logo?: string; color?: string }>
     | undefined;
 
-  const electionsList = (Array.isArray(elections) ? elections : []).filter(
-    (e: { _id?: string; name?: string; status?: string }) =>
-      e.status === "active",
+  const electionsList = useMemo(
+    () =>
+      (Array.isArray(elections) ? elections : []).filter(
+        (e: { _id?: string; name?: string; status?: string }) => e.status === "active",
+      ),
+    // elections is a direct Redux cache reference — stable unless data changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [elections],
   );
 
   useEffect(() => {
@@ -1135,16 +1260,18 @@ export default function Results() {
     dispatch(getParties());
   }, [dispatch]);
 
+  // Messages are loaded on-demand when the user opens the modal — no background fetch.
+
   useEffect(() => {
     if (organizationId) {
       dispatch(
         getElectionsByOrganizationId({
           organizationId,
-          query: { includeResults: true },
+          query: electionsQuery,
         }),
       );
     }
-  }, [dispatch, organizationId]);
+  }, [dispatch, organizationId, JSON.stringify(electionsQuery)]);
 
   useEffect(() => {
     if (expandedElectionId) {
@@ -1249,8 +1376,7 @@ export default function Results() {
   // then check if THIS specific user is already in the list to seed hasMarkedPresence.
   // Runs once user is loaded so userId is always valid. Survives page reloads.
   const currentUserId =
-    (user as { id?: string; _id?: string })?.id ??
-    (user as { id?: string; _id?: string })?._id;
+    String((user as { _id?: string; id?: string })?._id ?? (user as { _id?: string; id?: string })?.id ?? "");
 
   useEffect(() => {
     if (!puPresenceParams || !currentUserId) return;
@@ -1294,7 +1420,7 @@ export default function Results() {
   });
 
   // Real-time results: refetch totals + collation whenever any result is saved
-  const electionsListIds = electionsList.map((e) => e._id);
+  const electionsListIds = useMemo(() => electionsList.map((e: { _id?: string }) => e._id as string), [electionsList]);
   useResultSocket(
     electionsListIds,
     // Per-election: immediate granular refresh (vote counts, coverage, collation)
@@ -1340,7 +1466,7 @@ export default function Results() {
         dispatch(
           getElectionsByOrganizationId({
             organizationId,
-            query: { includeResults: true },
+            query: electionsQuery,
           }),
         );
       }
@@ -1359,28 +1485,26 @@ export default function Results() {
     }
   }, [dispatch, organizationId, puViewElectionId, puViewPollingUnitId]);
 
-  const allPresenceData = useSelector(
-    selectListPresence(puElectionId ? { electionId: puElectionId } : {}),
+  const _selectAllPresence = useMemo(
+    () => selectListPresence(puElectionId ? { electionId: puElectionId } : {}),
+    [puElectionId],
   );
+  const allPresenceData = useSelector(_selectAllPresence);
   const presenceCount = puElectionId
     ? (allPresenceData?.count ?? (allPresenceData?.presence ?? []).length)
     : 0;
   // hasMarkedPresence and presenceFetched are managed via direct .unwrap() promise above.
 
-  const accreditationData = useSelector(
-    selectAccreditedVotersByPollingUnit(
-      organizationId || "",
-      puViewPollingUnitId || "",
-      puViewElectionId || "",
-    ),
+  const _selectAccreditation = useMemo(
+    () => selectAccreditedVotersByPollingUnit(organizationId || "", puViewPollingUnitId || "", puViewElectionId || ""),
+    [organizationId, puViewPollingUnitId, puViewElectionId],
   );
-  const accreditationLoading = useSelector(
-    selectAccreditedVotersByPollingUnitLoading(
-      organizationId || "",
-      puViewPollingUnitId || "",
-      puViewElectionId || "",
-    ),
+  const _selectAccreditationLoading = useMemo(
+    () => selectAccreditedVotersByPollingUnitLoading(organizationId || "", puViewPollingUnitId || "", puViewElectionId || ""),
+    [organizationId, puViewPollingUnitId, puViewElectionId],
   );
+  const accreditationData    = useSelector(_selectAccreditation);
+  const accreditationLoading = useSelector(_selectAccreditationLoading);
   const accreditedCount = accreditationData?.accreditedCount ?? null;
   const votingStartedAt = accreditationData?.accreditation?.votingStartedAt;
   const votingEndedAt = accreditationData?.accreditation?.votingEndedAt;
@@ -1390,13 +1514,78 @@ export default function Results() {
   const isOverviewRole =
     role === "regular" || role === "executive" || role === "superadmin";
 
+  // ── Messages selectors ────────────────────────────────────────────────────
+  const inbox          = useSelector(selectInbox);
+  const inboxLoading   = useSelector(selectInboxLoading);
+  const unreadCount    = useSelector(selectUnreadCount);
+  const readIds        = useSelector((s: RootState) => s.messages.readIds);
+  const openMessage    = useSelector(selectOpenMessage);
+  const openMsgLoading = useSelector(selectOpenMessageLoading);
+  const replyError     = useSelector(selectReplyError);
+
+  // ── Org regular-admins for the message modal ─────────────────────────────
+  const _selectRegularUsersMsg = useMemo(
+    () => selectRegularAdminsByOrganizationId(organizationId || ""),
+    [organizationId],
+  );
+  const regularUserListRaw = (useSelector(_selectRegularUsersMsg) ?? []) as {
+    _id?: string; id?: string; firstName?: string; lastName?: string;
+    email?: string; role?: string; photo?: string;
+  }[];
+  // Exclude current user so we never show "chat with self"
+  const regularUserList = useMemo(
+    () => regularUserListRaw.filter((u) => String(u._id ?? u.id ?? "") !== String(currentUserId)),
+    [regularUserListRaw, currentUserId],
+  );
+
+  // Inbox messages from others (not self)
+  const inboxFromOthers = useMemo(
+    () => inbox.filter((m) => {
+      const sid = m.from ? String((m.from as { _id?: string })?._id ?? (m.from as { id?: string })?.id ?? "") : "";
+      return sid !== currentUserId;
+    }),
+    [inbox, currentUserId],
+  );
+
+  // Inbox conversations: one per sender (direct messages only), with latest message (like Regular users)
+  const inboxConversations = useMemo(() => {
+    const directOnly = inboxFromOthers.filter((m) => (m as { targetType?: string }).targetType === "direct");
+    const bySender = new Map<string, { sender: unknown; messages: typeof inboxFromOthers }>();
+    for (const m of directOnly) {
+      const sid = m.from ? String((m.from as { _id?: string })?._id ?? (m.from as { id?: string })?.id ?? "") : "";
+      if (!sid) continue;
+      if (!bySender.has(sid)) {
+        bySender.set(sid, { sender: m.from, messages: [] });
+      }
+      bySender.get(sid)!.messages.push(m);
+    }
+    return Array.from(bySender.entries())
+      .map(([senderId, { sender, messages }]) => {
+        const sorted = [...messages].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        const latest = sorted[0];
+        const hasUnread = sorted.some((msg) => msg.isRead !== undefined ? !msg.isRead : !readIds.includes(msg._id));
+        return { senderId, sender, latestMessage: latest, hasUnread };
+      })
+      .sort((a, b) =>
+        new Date(b.latestMessage.createdAt).getTime() - new Date(a.latestMessage.createdAt).getTime()
+      );
+  }, [inboxFromOthers, readIds]);
+
+  const threads = useSelector(selectThreads);
+  const threadLoading = useSelector(selectThreadLoading);
+  const onlineUserIds = useSelector(selectOnlineUserIds);
+  const typingUserId = useSelector(selectTypingUserId);
+
   // Org-wide accreditation totals (for overview roles only)
-  const orgAccreditationRaw = useSelector(
-    selectAllAccreditationByOrganization(
-      organizationId || "",
-      puViewElectionId || "",
-    ),
-  ) as { totalAccreditedVoters?: number; total?: number } | undefined;
+  const _selectOrgAccreditation = useMemo(
+    () => selectAllAccreditationByOrganization(organizationId || "", puViewElectionId || ""),
+    [organizationId, puViewElectionId],
+  );
+  const orgAccreditationRaw = useSelector(_selectOrgAccreditation) as
+    | { totalAccreditedVoters?: number; total?: number }
+    | undefined;
   const orgAccreditationData = isOverviewRole ? orgAccreditationRaw : undefined;
 
   useEffect(() => {
@@ -1411,9 +1600,11 @@ export default function Results() {
   }, [dispatch, isOverviewRole, organizationId, puViewElectionId]);
 
   // Total PUs from the first election's coverage (already fetched)
-  const firstElectionCoverage = useSelector(
-    selectPollingUnitsCoverage(puViewElectionId || ""),
+  const _selectFirstCoverage = useMemo(
+    () => selectPollingUnitsCoverage(puViewElectionId || ""),
+    [puViewElectionId],
   );
+  const firstElectionCoverage = useSelector(_selectFirstCoverage);
   const totalPUs = firstElectionCoverage?.total ?? null;
   const puWithAccreditation = orgAccreditationData?.total ?? 0;
   const remainingPUs = totalPUs != null ? totalPUs - puWithAccreditation : null;
@@ -1421,18 +1612,77 @@ export default function Results() {
     orgAccreditationData?.totalAccreditedVoters ?? null;
 
   // Over-voting detail data (fetched on demand when modal is opened)
-  const overVotingData = useSelector(
-    selectOverVotingByOrganization(
-      organizationId || "",
-      puViewElectionId || "",
-    ),
+  const _selectOverVoting = useMemo(
+    () => selectOverVotingByOrganization(organizationId || "", puViewElectionId || ""),
+    [organizationId, puViewElectionId],
   );
-  const overVotingLoading = useSelector(
-    selectOverVotingByOrganizationLoading(
-      organizationId || "",
-      puViewElectionId || "",
-    ),
+  const _selectOverVotingLoading = useMemo(
+    () => selectOverVotingByOrganizationLoading(organizationId || "", puViewElectionId || ""),
+    [organizationId, puViewElectionId],
   );
+  const overVotingData    = useSelector(_selectOverVoting);
+  const overVotingLoading = useSelector(_selectOverVotingLoading);
+
+  // Share/Print: collation data for current election + location (use shareElectionIdForModal when modal opened from card)
+  const shareElectionIdEffective = shareElectionIdForModal ?? puElectionId ?? "";
+  const _selectShareCollation = useMemo(() => {
+    if (!shareElectionIdEffective || !locationIdForRole) return (_s: RootState) => [] as Array<{ aspirant?: { name?: string; partyCode?: string }; votes?: number }>;
+    if (level === "polling_unit") {
+      const sel = selectResultsByPollingUnit(shareElectionIdEffective, locationIdForRole);
+      return (s: RootState) => ((sel(s) as { results?: unknown[] })?.results ?? []) as Array<{ aspirant?: { name?: string; partyCode?: string }; votes?: number }>;
+    }
+    if (level === "ward") {
+      const sel = selectWardCollation(shareElectionIdEffective, locationIdForRole);
+      return (s: RootState) => ((sel(s) as { results?: unknown[] })?.results ?? []) as Array<{ aspirant?: { name?: string; partyCode?: string }; votes?: number }>;
+    }
+    if (level === "lga") {
+      const sel = selectLgaCollation(shareElectionIdEffective, locationIdForRole);
+      return (s: RootState) => ((sel(s) as { results?: unknown[] })?.results ?? []) as Array<{ aspirant?: { name?: string; partyCode?: string }; votes?: number }>;
+    }
+    if (level === "state") {
+      const sel = selectStateCollation(shareElectionIdEffective, locationIdForRole);
+      return (s: RootState) => ((sel(s) as { results?: unknown[] })?.results ?? []) as Array<{ aspirant?: { name?: string; partyCode?: string }; votes?: number }>;
+    }
+    return (_s: RootState) => [] as Array<{ aspirant?: { name?: string; partyCode?: string }; votes?: number }>;
+  }, [shareElectionIdEffective, locationIdForRole, level]);
+  const shareCollationRaw = useSelector(_selectShareCollation);
+  const shareElection = electionsList.find((e: { _id?: string }) => e._id === shareElectionIdEffective);
+  const shareLocationName =
+    level === "polling_unit"
+      ? getLocationName(u?.pollingUnit)
+      : level === "ward"
+        ? getLocationName(u?.ward)
+        : level === "lga"
+          ? getLocationName(u?.lga)
+          : level === "state"
+            ? getLocationName(u?.state)
+            : "—";
+  const shareLocationLabel =
+    level === "polling_unit"
+      ? "Polling Unit"
+      : level === "ward"
+        ? "Ward"
+        : level === "lga"
+          ? "LGA"
+          : level === "state"
+            ? "State"
+            : "Location";
+  const shareAspirants = (() => {
+    const sorted = [...shareCollationRaw].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0));
+    const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"];
+    return sorted.map((r, i) => ({
+      name: r.aspirant?.name ?? "—",
+      partyCode: r.aspirant?.partyCode ?? "",
+      votes: r.votes ?? 0,
+      positionLabel: ordinals[i] ?? `${i + 1}th`,
+    }));
+  })();
+  const shareTotalVotes = shareAspirants.reduce((s, a) => s + a.votes, 0);
+  const canShare =
+    !!shareElectionIdEffective &&
+    !!locationIdForRole &&
+    shareAspirants.length > 0 &&
+    shareTotalVotes > 0;
 
   // Total votes cast: sum of all aspirant totalVotes across all active elections
   const totalVotesCast = electionsList.reduce((sum, el) => {
@@ -1460,17 +1710,222 @@ export default function Results() {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setShowAccreditedModal(false);
-        setShowVoteStartConfirm(false);
-        setShowVoteEndConfirm(false);
-        setShowAccStartConfirm(false);
-        setShowAccEndConfirm(false);
-        setShowOverVotingModal(false);
+        if (showSidebarDrawer) {
+          setShowSidebarDrawer(false);
+        } else {
+          setShowAccreditedModal(false);
+          setShowVoteStartConfirm(false);
+          setShowVoteEndConfirm(false);
+          setShowAccStartConfirm(false);
+          setShowAccEndConfirm(false);
+          setShowOverVotingModal(false);
+          setShowReportModal(false);
+          setShowShareModal(false);
+          setShowMessagesModal(false);
+        }
       }
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, []);
+  }, [showSidebarDrawer]);
+
+  const handleOpenMessagesModal = () => {
+    setReplyText("");
+    setActiveUserId(null);
+    setShowSidebarDrawer(false);
+    dispatch(clearOpenMessage());
+    if (organizationId) {
+      dispatch(getMyMessages(organizationId));
+      dispatch(getRegularAdminsByOrganizationId(organizationId));
+    }
+    setShowMessagesModal(true);
+  };
+
+  const handleSelectUser = (userId: string) => {
+    if (String(userId) === String(currentUserId)) return; // never select self
+    setActiveUserId(userId);
+    setShowSidebarDrawer(false);
+    dispatch(clearOpenMessage());
+    setReplyText("");
+  };
+
+  const handleSendReply = async () => {
+    if (!organizationId || !replyText.trim()) return;
+    if (activeUserId && String(activeUserId) === String(currentUserId)) return; // never send to self
+    const text = replyText.trim();
+    setReplyText("");
+    try {
+      if (activeUserId && !openMessage) {
+        // Optimistic: show message immediately
+        const optMsg = {
+          _id: `opt-${Date.now()}`,
+          from: user ?? undefined,
+          title: "Direct Message",
+          body: text,
+          createdAt: new Date().toISOString(),
+          targetType: "direct" as const,
+          targetId: activeUserId,
+        } as import("../features/messages/messageApi").IMessage;
+        dispatch(appendToThread({ agentId: activeUserId, message: optMsg }));
+        await dispatch(sendDirectMessage({ organizationId, targetUserId: activeUserId, body: text })).unwrap();
+      } else if (openMessage) {
+        await dispatch(replyToMessage({ organizationId, messageId: openMessage._id, body: text })).unwrap();
+        dispatch(getMessageById({ organizationId, messageId: openMessage._id }));
+      }
+    } catch { /* error handled by redux */ }
+    setTimeout(() => msgBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
+  const handleMsgKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendReply();
+    }
+  };
+
+  // Real-time messages via Socket.io — no polling
+  useEffect(() => {
+    if (!organizationId) return;
+    const socket = getSocket();
+    const uid = String((user as { _id?: string; id?: string })?._id ?? (user as { _id?: string; id?: string })?.id ?? "");
+    socket.emit("join:org", { organizationId, userId: uid });
+
+    socket.on("users:online", (payload: { userIds?: string[] }) => {
+      dispatch(setOnlineUsers(payload.userIds ?? []));
+    });
+    const onNewMessage = (msg: { _id: string; targetType?: string; targetId?: string; from?: { _id?: string } | unknown; body?: string; title?: string; createdAt?: string; updatedAt?: string; isRead?: boolean }) => {
+      dispatch(socketNewMessage(msg as Parameters<typeof socketNewMessage>[0]));
+      const fromId = String((msg.from as { _id?: string })?._id ?? "");
+      if (fromId && fromId !== uid) playMessageNotificationSound();
+    };
+    const onNewReply = (payload: { reply: Parameters<typeof socketNewReply>[0]["reply"]; parentId: string }) => {
+      dispatch(socketNewReply(payload));
+      const fromId = String((payload.reply?.from as { _id?: string })?._id ?? "");
+      if (fromId && fromId !== uid) playMessageNotificationSound();
+    };
+
+    socket.on("new_message", onNewMessage);
+    socket.on("new_reply", onNewReply);
+
+    let typingClearTimer: ReturnType<typeof setTimeout> | null = null;
+    socket.on("user_typing", (payload: { userId: string; targetUserId: string }) => {
+      const { userId, targetUserId } = payload ?? {};
+      if (targetUserId === uid) {
+        dispatch(setTypingUser(userId ?? null));
+        if (typingClearTimer) clearTimeout(typingClearTimer);
+        typingClearTimer = setTimeout(() => dispatch(setTypingUser(null)), 3000);
+      }
+    });
+    socket.on("user_typing_stop", (payload: { userId: string; targetUserId: string }) => {
+      const { userId, targetUserId } = payload ?? {};
+      const currentTyping = store.getState().messages.typingUserId;
+      if (targetUserId === uid && currentTyping === userId) {
+        if (typingClearTimer) clearTimeout(typingClearTimer);
+        dispatch(setTypingUser(null));
+      }
+    });
+
+    return () => {
+      if (typingClearTimer) clearTimeout(typingClearTimer);
+      try {
+        socket.off("users:online");
+        socket.off("new_message");
+        socket.off("new_reply");
+        socket.off("user_typing");
+        socket.off("user_typing_stop");
+      } catch (_) {
+        /* ignore */
+      }
+    };
+  }, [dispatch, organizationId, user]);
+
+  // Fetch thread when selecting a regular user for direct message
+  useEffect(() => {
+    if (organizationId && activeUserId && !openMessage) {
+      dispatch(getThread({ organizationId, agentId: activeUserId }));
+    }
+  }, [dispatch, organizationId, activeUserId, openMessage]);
+
+  // Scroll to bottom when thread or open message updates
+  useEffect(() => {
+    if (openMessage || (activeUserId && (threads[activeUserId] ?? []).length > 0)) {
+      setTimeout(() => msgBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  }, [openMessage, activeUserId, threads]);
+
+  // Emit typing when user types (direct thread only)
+  const typingStopRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!organizationId || !currentUserId || !activeUserId || openMessage) return;
+    const socket = getSocket();
+    const emitStop = () => {
+      socket.emit("typing:stop", { organizationId, userId: currentUserId, targetUserId: activeUserId });
+    };
+    if (replyText.trim()) {
+      socket.emit("typing", { organizationId, userId: currentUserId, targetUserId: activeUserId });
+      if (typingStopRef.current) clearTimeout(typingStopRef.current);
+      typingStopRef.current = setTimeout(emitStop, 2000);
+    } else {
+      emitStop();
+    }
+    return () => {
+      if (typingStopRef.current) clearTimeout(typingStopRef.current);
+    };
+  }, [organizationId, currentUserId, activeUserId, openMessage, replyText]);
+
+  const handleOpenReportModal = () => {
+    const firstElectionId = electionsList[0]?._id ?? "";
+    setReportElectionId(firstElectionId);
+    setReportCategory("");
+    setReportSelectedItems([]);
+    setReportNotes("");
+    setReportMsg(null);
+    setShowReportModal(true);
+  };
+
+  const handleReportItemToggle = (item: string) => {
+    setReportSelectedItems((prev) =>
+      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
+    );
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportElectionId) { setReportMsg({ type: "error", text: "Please select an election." }); return; }
+    if (!reportCategory)   { setReportMsg({ type: "error", text: "Please select a category." }); return; }
+    if (reportSelectedItems.length === 0) { setReportMsg({ type: "error", text: "Please select at least one item." }); return; }
+
+    const locationBody: Record<string, string> = {};
+    if (level === "polling_unit" && locationIdForRole)     locationBody.pollingUnitId = locationIdForRole;
+    else if (level === "ward" && locationIdForRole)        locationBody.wardId        = locationIdForRole;
+    else if (level === "lga" && locationIdForRole)         locationBody.lgaId         = locationIdForRole;
+    else if (level === "state" && locationIdForRole)       locationBody.stateId       = locationIdForRole;
+    else if (isOverviewRole) {
+      // Overview roles need at least one location — skip enforcement here; backend validates
+    }
+
+    setReportSubmitting(true);
+    setReportMsg(null);
+    try {
+      await dispatch(
+        createReport({
+          electionId: reportElectionId,
+          category: reportCategory as ReportCategory,
+          items: reportSelectedItems,
+          notes: reportNotes.trim() || undefined,
+          ...locationBody,
+        })
+      ).unwrap();
+      setReportMsg({ type: "success", text: "Report submitted successfully." });
+      setReportCategory("");
+      setReportSelectedItems([]);
+      setReportNotes("");
+    } catch (err: unknown) {
+      const msg = typeof err === "string" ? err : (err as { message?: string })?.message ?? "Failed to submit report.";
+      setReportMsg({ type: "error", text: msg });
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
 
   const handleOpenOverVotingModal = () => {
     setShowOverVotingModal(true);
@@ -1987,9 +2442,15 @@ export default function Results() {
       setAccordionMessage({ type: "error", text: errMsg });
   };
 
-  const expandedAspirants = useSelector(
-    selectAspirantsByElection(expandedElectionId ?? ""),
-  ) as
+  const _selectExpandedAspirants = useMemo(
+    () => selectAspirantsByElection(expandedElectionId ?? ""),
+    [expandedElectionId],
+  );
+  const _selectExpandedAspirantsLoading = useMemo(
+    () => selectAspirantsByElectionLoading(expandedElectionId ?? ""),
+    [expandedElectionId],
+  );
+  const expandedAspirants = useSelector(_selectExpandedAspirants) as
     | Array<{
         _id: string;
         name: string;
@@ -2002,15 +2463,65 @@ export default function Results() {
         };
       }>
     | undefined;
-  const expandedAspirantsLoading = useSelector(
-    selectAspirantsByElectionLoading(expandedElectionId ?? ""),
-  );
+  const expandedAspirantsLoading = useSelector(_selectExpandedAspirantsLoading);
 
   return (
     <div className="results-page">
-      <div>
-        <p className="results-page__breadcrumb">EMS / Results</p>
-        <h1 className="results-page__title">Enter Results</h1>
+      <div className="results-page__header">
+        <div>
+          <p className="results-page__breadcrumb">EMS / Results</p>
+          <h1 className="results-page__title">Enter Results</h1>
+        </div>
+        {!isOverviewRole && (
+          <div className="results-page__header-actions">
+            <button
+              type="button"
+              className="results-btn results-btn--messages"
+              onClick={handleOpenMessagesModal}
+              title="View messages"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Messages
+              {unreadCount > 0 && (
+                <span className="results-btn__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              className="results-btn results-btn--share"
+              onClick={() => setShowShareModal(true)}
+              disabled={!canShare}
+              title={canShare ? "Share / Print result" : "Select an election with results to share"}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                <path d="M4 22h16" />
+                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+              </svg>
+              Share Result
+            </button>
+            <button
+              type="button"
+              className="results-btn results-btn--report"
+              onClick={handleOpenReportModal}
+              title="Submit an incident report"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              Report
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="results-polling-unit">
@@ -2081,11 +2592,70 @@ export default function Results() {
         </div>
       </div>
 
-      {(organizationId || electionsList.length > 0 || isPO) && (
+      {isPO && electionsList.length === 0 ? (
+        <p className="results-view__empty" style={{ margin: 0 }}>There is no election</p>
+      ) : (organizationId || electionsList.length > 0 || isPO) ? (
         <div className="results-card results-pu-upper">
           <h2 className="results-card__heading">
             Polling Unit – Voting - Presence - Accreditation
           </h2>
+
+          {/* Progress bar: Mark presence → Voting ended (PO agents only) */}
+          {isPO && puElectionId && (hasMarkedPresence || presenceFetched) && (
+            <div className="results-pu-progress">
+              <div className="results-pu-progress__header">
+                <span className="results-pu-progress__label">Election progress</span>
+                <span className="results-pu-progress__count">
+                  {(() => {
+                    const n = [
+                      hasMarkedPresence,
+                      !!accreditationStartedAt,
+                      !!accreditationEndedAt,
+                      accreditedCount != null,
+                      !!votingStartedAt,
+                      !!votingEndedAt,
+                    ].filter(Boolean).length;
+                    return n === 6 ? "Completed" : `${n}/6 steps`;
+                  })()}
+                </span>
+              </div>
+              <div className="results-pu-progress__bar">
+                <div
+                  className="results-pu-progress__fill"
+                  style={{
+                    width: `${([
+                      hasMarkedPresence,
+                      !!accreditationStartedAt,
+                      !!accreditationEndedAt,
+                      accreditedCount != null,
+                      !!votingStartedAt,
+                      !!votingEndedAt,
+                    ].filter(Boolean).length /
+                      6) *
+                      100}%`,
+                  }}
+                />
+              </div>
+              {/* <div className="results-pu-progress__steps">
+                {[
+                  { key: "presence", label: "Presence", done: hasMarkedPresence },
+                  { key: "acc-start", label: "Accreditation started", done: !!accreditationStartedAt },
+                  { key: "acc-end", label: "Accreditation ended", done: !!accreditationEndedAt },
+                  { key: "accredited", label: "Accredited voters", done: accreditedCount != null },
+                  { key: "vote-start", label: "Voting started", done: !!votingStartedAt },
+                  { key: "vote-end", label: "Voting ended", done: !!votingEndedAt },
+                ].map((step) => (
+                  <span
+                    key={step.key}
+                    className={`results-pu-progress__step${step.done ? " results-pu-progress__step--done" : ""}`}
+                    title={step.done ? `✓ ${step.label}` : step.label}
+                  >
+                    {step.done ? "✓" : "○"} {step.label}
+                  </span>
+                ))}
+              </div> */}
+            </div>
+          )}
 
           {!puElectionId && !isPO ? (
             <p className="results-view__empty" style={{ margin: 0 }}>
@@ -2393,6 +2963,30 @@ export default function Results() {
                         </div>
                       </button>
                     )}
+                  {/* Share Result — visible when voting ended (PO agents only) */}
+                  {(isPO && !!votingEndedAt) && canShare && (
+                    <button
+                      type="button"
+                      className="results-pu-card results-pu-card--clickable"
+                      onClick={() => setShowShareModal(true)}
+                      title="Share / Print result"
+                    >
+                      <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--blue">
+                        <IconShare />
+                      </span>
+                      <div className="results-pu-card__body">
+                        <span className="results-pu-card__label">
+                          Share Result
+                        </span>
+                        <span className="results-pu-card__value">
+                          Print / Share
+                        </span>
+                        <span className="results-pu-card__sublabel">
+                          View and print result sheet
+                        </span>
+                      </div>
+                    </button>
+                  )}
                 </div>
               )}
               {puMessage && (
@@ -2636,7 +3230,7 @@ export default function Results() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {showElectionsAccordion &&
         electionsList.length > 0 &&
@@ -2687,6 +3281,7 @@ export default function Results() {
                   role={role}
                   level={level}
                   locationId={locationIdForRole}
+                  onSharePrint={!isOverviewRole ? (id) => { setShareElectionIdForModal(id); setShowShareModal(true); } : undefined}
                 />
               ))}
             </div>
@@ -2695,6 +3290,595 @@ export default function Results() {
             )}
           </div>
         )}
+
+      {/* ── Messages modal (agents only) ───────────────────────────────────── */}
+      {!isOverviewRole && showMessagesModal && (
+        <div
+          className="results-messages-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="messages-modal-title"
+                  onClick={() => { setShowMessagesModal(false); dispatch(clearOpenMessage()); setActiveUserId(null); }}
+        >
+          <div
+            className="results-messages-modal results-messages-modal--chat"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ── Two-panel chat layout ── */}
+            {showSidebarDrawer && (
+              <div
+                className="rmc-drawer-backdrop"
+                onClick={() => setShowSidebarDrawer(false)}
+                aria-hidden="true"
+              />
+            )}
+            {/* LEFT: Regular users + Inbox — drawer on mobile */}
+            <div className={`rmc-sidebar${showSidebarDrawer ? " rmc-sidebar--drawer-open" : ""}`}>
+              <div className="rmc-sidebar__header">
+                <div className="rmc-sidebar__title-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <h2 id="messages-modal-title" className="rmc-sidebar__title">Messages</h2>
+                  {unreadCount > 0 && <span className="rmc-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+                </div>
+                <div className="rmc-sidebar__header-actions">
+                  <div className="rmc-sidebar__live">
+                    <span className="rmc-live-dot" />
+                    Live
+                  </div>
+                  <button
+                    type="button"
+                    className="rmc-sidebar__drawer-close"
+                    onClick={() => setShowSidebarDrawer(false)}
+                    aria-label="Close user list"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div className="rmc-sidebar__list">
+                {/* Regular-role users — always shown at top so agent can initiate */}
+                {regularUserList.length > 0 && (
+                  <div className="rmc-section-label">Regular users</div>
+                )}
+                {regularUserList.map((u, uIdx) => {
+                  const userId = String(u._id ?? u.id ?? "");
+                  const isActive = activeUserId === userId && !openMessage;
+                  // Online: current user, or the user we're actively chatting with
+                  const isOnline = onlineUserIds.includes(userId) || String(userId) === String(currentUserId);
+                  const initials = ((u.firstName?.[0] ?? "") + (u.lastName?.[0] ?? "")).toUpperCase() || "?";
+                  const name = [u.firstName, (u as { middleName?: string }).middleName, u.lastName].filter(Boolean).join(" ") || u.email || "User";
+                  return (
+                    <button
+                      key={`user-${userId}-${uIdx}`}
+                      type="button"
+                      className={`rmc-item${isActive ? " rmc-item--active" : ""}`}
+                      onClick={() => handleSelectUser(userId)}
+                    >
+                      <div className="rmc-item__avatar-wrap">
+                        {u.photo
+                          ? <img src={u.photo} alt={name} className="rmc-avatar" />
+                          : <div className="rmc-avatar rmc-avatar--initials">{initials}</div>
+                        }
+                        <span className={`rmc-item__status rmc-item__status--${isOnline ? "online" : "offline"}`} title={isOnline ? "Live" : "Offline"} />
+                      </div>
+                      <div className="rmc-item__content">
+                        <div className="rmc-item__top">
+                          <span className="rmc-item__name">{name}</span>
+                        </div>
+                        <div className="rmc-item__bottom">
+                          <span className="rmc-item__preview" style={{ fontStyle: "italic", color: "#6b7280" }}>Regular</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Inbox — conversations by sender, same layout as Regular users; click shows full chat history */}
+                {inboxConversations.length > 0 && (
+                  <div className="rmc-section-label">Inbox</div>
+                )}
+                {inboxConversations.map((conv) => {
+                  const senderId = conv.senderId;
+                  const isActive = activeUserId === senderId && !openMessage;
+                  const isOnline = onlineUserIds.includes(senderId) || senderId === currentUserId;
+                  const sender = conv.sender as { firstName?: string; lastName?: string; middleName?: string; email?: string; photo?: string } | null;
+                  const name = sender
+                    ? [sender.firstName, sender.middleName, sender.lastName].filter(Boolean).join(" ") || sender.email || "Unknown"
+                    : "Unknown";
+                  const initials = sender
+                    ? ((sender.firstName?.[0] ?? "") + (sender.lastName?.[0] ?? "")).toUpperCase() || "?"
+                    : "?";
+                  const latest = conv.latestMessage;
+                  return (
+                    <button
+                      key={`inbox-${senderId}`}
+                      type="button"
+                      className={`rmc-item${isActive ? " rmc-item--active" : ""}${conv.hasUnread ? " rmc-item--unread" : ""}`}
+                      onClick={() => handleSelectUser(senderId)}
+                    >
+                      <div className="rmc-item__avatar-wrap">
+                        {sender?.photo
+                          ? <img src={sender.photo} alt={name} className="rmc-avatar" />
+                          : <div className="rmc-avatar rmc-avatar--initials">{initials}</div>
+                        }
+                        <span className={`rmc-item__status rmc-item__status--${isOnline ? "online" : "offline"}`} title={isOnline ? "Live" : "Offline"} />
+                      </div>
+                      <div className="rmc-item__content">
+                        <div className="rmc-item__top">
+                          <span className="rmc-item__name">{name}</span>
+                          <span className="rmc-item__time">
+                            {new Date(latest.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <div className="rmc-item__bottom">
+                          <span className="rmc-item__preview">
+                            {String(latest.body ?? "").slice(0, 45)}{String(latest.body ?? "").length > 45 ? "…" : ""}
+                          </span>
+                          {conv.hasUnread && <span className="rmc-item__dot" />}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+                {inboxLoading && inbox.length === 0 && regularUserList.length === 0 && (
+                  <div className="rmc-empty"><span className="rmc-spinner" /><span>Loading…</span></div>
+                )}
+                {!inboxLoading && inbox.length === 0 && regularUserList.length === 0 && (
+                  <div className="rmc-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" width="32" height="32">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <p>No messages yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT: Chat window */}
+            <div className="rmc-chat">
+              {/* Chat top bar */}
+              <div className="rmc-chat__topbar">
+                <button
+                  type="button"
+                  className="rmc-chat__drawer-toggle"
+                  onClick={() => setShowSidebarDrawer(true)}
+                  aria-label="Open user list"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </svg>
+                </button>
+                {(() => {
+                  // Determine the peer to show in the header
+                  if (openMessage) {
+                    return (
+                      <>
+                        {openMessage.from?.photo
+                          ? <img src={openMessage.from.photo} alt="" className="rmc-avatar rmc-avatar--md" />
+                          : (
+                            <div className="rmc-avatar rmc-avatar--md rmc-avatar--initials">
+                              {((openMessage.from?.firstName?.[0] ?? "") + (openMessage.from?.lastName?.[0] ?? "")).toUpperCase() || "?"}
+                            </div>
+                          )
+                        }
+                        <div className="rmc-chat__peer-info">
+                          <span className="rmc-chat__peer-name">
+                            {[openMessage.from?.firstName, (openMessage.from as { middleName?: string })?.middleName, openMessage.from?.lastName].filter(Boolean).join(" ") || openMessage.from?.email || "Unknown"}
+                          </span>
+                          {openMessage.from?.role && (
+                            <span className="rmc-chat__peer-role">{openMessage.from.role.replace(/_/g, " ")}</span>
+                          )}
+                        </div>
+                      </>
+                    );
+                  }
+                  if (activeUserId) {
+                    const u = regularUserList.find((a) => String(a._id ?? a.id ?? "") === activeUserId);
+                    const inboxConv = inboxConversations.find((c) => c.senderId === activeUserId);
+                    const sender = u ?? (inboxConv?.sender as { firstName?: string; lastName?: string; middleName?: string; email?: string; photo?: string } | undefined);
+                    const name = sender
+                      ? ([sender.firstName, (sender as { middleName?: string }).middleName, sender.lastName].filter(Boolean).join(" ") || (sender as { email?: string }).email || "User")
+                      : "User";
+                    const initials = sender ? ((sender.firstName?.[0] ?? "") + (sender.lastName?.[0] ?? "")).toUpperCase() || "?" : "?";
+                    const roleLabel = u ? "Regular" : (inboxConv ? "Inbox" : "");
+                    return (
+                      <>
+                        {sender?.photo
+                          ? <img src={sender.photo} alt={name} className="rmc-avatar rmc-avatar--md" />
+                          : <div className="rmc-avatar rmc-avatar--md rmc-avatar--initials">{initials}</div>
+                        }
+                        <div className="rmc-chat__peer-info">
+                          <span className="rmc-chat__peer-name">{name}</span>
+                          {roleLabel && <span className="rmc-chat__peer-role">{roleLabel}</span>}
+                        </div>
+                      </>
+                    );
+                  }
+                  return <span className="rmc-chat__placeholder-title">Select a user or a message</span>;
+                })()}
+                <button
+                  type="button"
+                  className="rmc-chat__close"
+                  onClick={() => { setShowMessagesModal(false); dispatch(clearOpenMessage()); setActiveUserId(null); }}
+                  aria-label="Close"
+                >✕</button>
+              </div>
+
+              {/* Messages body */}
+              <div className="rmc-chat__body">
+                {!openMessage && !activeUserId && !openMsgLoading && (
+                  <div className="rmc-chat__empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" width="48" height="48">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <p className="rmc-chat__empty-text-desktop">Select a user or inbox conversation to view messages</p>
+                    <p className="rmc-chat__empty-text-mobile">Tap the menu icon above to open the user list</p>
+                  </div>
+                )}
+                {openMsgLoading && (
+                  <div className="rmc-chat__loading">
+                    <span className="rmc-spinner" />
+                    <span>Loading…</span>
+                  </div>
+                )}
+
+                {/* Direct message thread — user selected, show conversation */}
+                {!openMsgLoading && activeUserId && !openMessage && (
+                  <>
+                    {threadLoading ? (
+                      <div className="rmc-chat__loading">
+                        <span className="rmc-spinner" />
+                        <span>Loading…</span>
+                      </div>
+                    ) : (threads[activeUserId] ?? []).length === 0 ? (
+                      <div className="rmc-chat__empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" width="40" height="40">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        <p>Type your message below to start a conversation</p>
+                      </div>
+                    ) : (
+                      <>
+                        {(threads[activeUserId] ?? []).map((msg, mIdx) => {
+                          const myId = String((user as { _id?: string })?._id ?? (user as { id?: string })?.id ?? "");
+                          const fromId = String((msg.from as { _id?: string })?._id ?? (msg.from as { id?: string })?.id ?? "");
+                          const isMine = fromId === myId;
+                          const peerInitials = msg.from
+                            ? ((msg.from.firstName?.[0] ?? "") + (msg.from.lastName?.[0] ?? "")).toUpperCase() || "?"
+                            : "?";
+                          const readBy = ((msg as { readBy?: unknown[] }).readBy ?? []) as (string | { toString(): string })[];
+                          const isReadByRecipient = isMine && activeUserId && readBy.some((id) => String(id) === activeUserId);
+                          return (
+                            <div key={`dm-${msg._id}-${mIdx}`} className={`rmc-bubble-wrap${isMine ? " rmc-bubble-wrap--mine" : ""}`}>
+                              {!isMine && (
+                                msg.from?.photo
+                                  ? <img src={msg.from.photo} alt="" className="rmc-avatar rmc-avatar--sm" />
+                                  : <div className="rmc-avatar rmc-avatar--sm rmc-avatar--initials">{peerInitials}</div>
+                              )}
+                              <div className={`rmc-bubble${isMine ? " rmc-bubble--mine" : " rmc-bubble--theirs"}`}>
+                                <p className="rmc-bubble__text">{msg.body}</p>
+                                <div className="rmc-bubble__meta">
+                                  <span className="rmc-bubble__time">
+                                    {new Date(msg.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                  {isMine && <MessageStatusIcon read={!!isReadByRecipient} />}
+                                </div>
+                              </div>
+                              {isMine && <div className="rmc-avatar rmc-avatar--sm rmc-avatar--mine-placeholder" />}
+                            </div>
+                          );
+                        })}
+                        <div ref={msgBottomRef} />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {!openMsgLoading && openMessage && (
+                  <>
+                    {/* Original message as a bubble */}
+                    <div className="rmc-bubble-wrap">
+                      {openMessage.from?.photo
+                        ? <img src={openMessage.from.photo} alt="" className="rmc-avatar rmc-avatar--sm" />
+                        : <div className="rmc-avatar rmc-avatar--sm rmc-avatar--initials">
+                            {((openMessage.from?.firstName?.[0] ?? "") + (openMessage.from?.lastName?.[0] ?? "")).toUpperCase() || "?"}
+                          </div>
+                      }
+                      <div className="rmc-bubble rmc-bubble--theirs">
+                        <p className="rmc-bubble__text">{openMessage.body}</p>
+                        <span className="rmc-bubble__time">
+                          {new Date(openMessage.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Replies as chat bubbles */}
+                    {(openMessage.replies ?? []).map((r, rIdx) => {
+                      const myId = String((user as { _id?: string })?._id ?? "");
+                      const fromId = String((r.from as { _id?: string })?._id ?? "");
+                      const isMine = fromId === myId;
+                      const openMsgFromId = openMessage.from ? String((openMessage.from as { _id?: string })?._id ?? "") : "";
+                      const readBy = ((r as { readBy?: unknown[] }).readBy ?? []) as (string | { toString(): string })[];
+                      const isReadByRecipient = isMine && readBy.some((id) => String(id) === openMsgFromId);
+                      return (
+                        <div key={`reply-${r._id}-${rIdx}`} className={`rmc-bubble-wrap${isMine ? " rmc-bubble-wrap--mine" : ""}`}>
+                          {!isMine && (
+                            r.from?.photo
+                              ? <img src={r.from.photo} alt="" className="rmc-avatar rmc-avatar--sm" />
+                              : <div className="rmc-avatar rmc-avatar--sm rmc-avatar--initials">
+                                  {((r.from?.firstName?.[0] ?? "") + (r.from?.lastName?.[0] ?? "")).toUpperCase() || "?"}
+                                </div>
+                          )}
+                          <div className={`rmc-bubble${isMine ? " rmc-bubble--mine" : " rmc-bubble--theirs"}`}>
+                            <p className="rmc-bubble__text">{r.body}</p>
+                            <div className="rmc-bubble__meta">
+                              <span className="rmc-bubble__time">
+                                {new Date(r.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              {isMine && <MessageStatusIcon read={!!isReadByRecipient} />}
+                            </div>
+                          </div>
+                          {isMine && <div className="rmc-avatar rmc-avatar--sm rmc-avatar--mine-placeholder" />}
+                        </div>
+                      );
+                    })}
+                    <div ref={msgBottomRef} />
+                  </>
+                )}
+              </div>
+
+              {/* Typing indicator */}
+              {typingUserId && typingUserId === activeUserId && !openMessage && (() => {
+                const u = regularUserList.find((a) => String(a._id ?? a.id ?? "") === typingUserId);
+                const conv = inboxConversations.find((c) => c.senderId === typingUserId);
+                const sender = u ?? conv?.sender as { firstName?: string; lastName?: string; middleName?: string; email?: string } | undefined;
+                const name = sender
+                  ? ([sender.firstName, (sender as { middleName?: string }).middleName, sender.lastName].filter(Boolean).join(" ") || sender.email || "Someone")
+                  : "Someone";
+                return (
+                  <div className="rmc-chat__typing">
+                    <span className="rmc-chat__typing-dots"><span /><span /><span /></span>
+                    <span>{name} is typing…</span>
+                  </div>
+                );
+              })()}
+
+              {/* Fixed compose bar — active whenever a user is selected OR a message is open */}
+              <div className="rmc-chat__compose">
+                {replyError && <p className="rmc-chat__error">{replyError}</p>}
+                <div className={`rmc-chat__compose-inner${(!openMessage && !activeUserId) ? " rmc-chat__compose-inner--disabled" : ""}`}>
+                  <textarea
+                    className="rmc-chat__input"
+                    rows={1}
+                    placeholder={openMessage || activeUserId ? "Type a message… (Enter to send)" : "Select a user or message first"}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={handleMsgKeyDown}
+                    disabled={!openMessage && !activeUserId}
+                  />
+                  <button
+                    type="button"
+                    className="rmc-chat__send-btn"
+                    onClick={handleSendReply}
+                    disabled={!replyText.trim() || (!openMessage && !activeUserId)}
+                    aria-label="Send"
+                  >
+                    <FiSend size={18} className="rmc-chat__send-icon" color="currentColor" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Incident Report modal (agents only) ────────────────────────────── */}
+      {!isOverviewRole && showReportModal && (
+        <div
+          className="results-report-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-modal-title"
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="results-report-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="results-report-modal__header">
+              <div className="results-report-modal__header-left">
+                <div className="results-report-modal__header-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 id="report-modal-title" className="results-report-modal__title">
+                    Incident Report
+                  </h2>
+                  <p className="results-report-modal__subtitle">
+                    Select the incident type(s) and submit a report for your assigned location
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="results-report-modal__close"
+                onClick={() => setShowReportModal(false)}
+                aria-label="Close"
+              >✕</button>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="results-report-modal__body">
+
+              {/* Election selector — only show if more than one active election */}
+              {electionsList.length > 1 && (
+                <div className="results-report-modal__field">
+                  <label className="results-report-modal__label" htmlFor="report-election-select">
+                    Election
+                  </label>
+                  <select
+                    id="report-election-select"
+                    className="results-report-modal__select"
+                    value={reportElectionId}
+                    onChange={(e) => setReportElectionId(e.target.value)}
+                  >
+                    <option value="">— Select election —</option>
+                    {electionsList.map((el: { _id: string; name: string }) => (
+                      <option key={el._id} value={el._id}>{el.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Category + items */}
+              <div className="results-report-modal__categories">
+                {REPORT_CATEGORIES.map((cat) => {
+                  const items = REPORT_ITEMS_BY_CATEGORY[cat];
+                  const isActive = reportCategory === cat;
+                  return (
+                    <div
+                      key={cat}
+                      className={`results-report-modal__category${isActive ? " results-report-modal__category--active" : ""}`}
+                    >
+                      {/* Category header — click to expand/collapse */}
+                      <button
+                        type="button"
+                        className="results-report-modal__category-header"
+                        onClick={() => {
+                          if (isActive) {
+                            setReportCategory("");
+                            setReportSelectedItems([]);
+                          } else {
+                            setReportCategory(cat);
+                            setReportSelectedItems([]);
+                          }
+                        }}
+                      >
+                        <span className="results-report-modal__category-label">
+                          {REPORT_CATEGORY_LABELS[cat]}
+                        </span>
+                        <span className="results-report-modal__category-chevron">
+                          {isActive ? "▲" : "▼"}
+                        </span>
+                      </button>
+
+                      {/* Items — only shown when this category is active */}
+                      {isActive && (
+                        <div className="results-report-modal__items">
+                          {items.map((item) => {
+                            const checked = reportSelectedItems.includes(item);
+                            return (
+                              <label
+                                key={item}
+                                className={`results-report-modal__item${checked ? " results-report-modal__item--checked" : ""}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="results-report-modal__checkbox"
+                                  checked={checked}
+                                  onChange={() => handleReportItemToggle(item)}
+                                />
+                                <span className="results-report-modal__item-text">{item}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Notes */}
+              <div className="results-report-modal__field" style={{ marginTop: "1rem" }}>
+                <label className="results-report-modal__label" htmlFor="report-notes">
+                  Additional notes <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+                </label>
+                <textarea
+                  id="report-notes"
+                  className="results-report-modal__textarea"
+                  rows={3}
+                  placeholder="Describe what happened…"
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                />
+              </div>
+
+              {/* Selected summary */}
+              {reportSelectedItems.length > 0 && (
+                <div className="results-report-modal__selected-summary">
+                  <span className="results-report-modal__selected-label">Selected:</span>
+                  <div className="results-report-modal__selected-tags">
+                    {reportSelectedItems.map((item) => (
+                      <span key={item} className="results-report-modal__selected-tag">
+                        {item}
+                        <button
+                          type="button"
+                          className="results-report-modal__selected-tag-remove"
+                          onClick={() => handleReportItemToggle(item)}
+                          aria-label={`Remove ${item}`}
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Status message */}
+              {reportMsg && (
+                <p className={`results-report-modal__msg results-report-modal__msg--${reportMsg.type}`}>
+                  {reportMsg.text}
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="results-report-modal__footer">
+              <button
+                type="button"
+                className="results-btn results-report-modal__cancel-btn"
+                onClick={() => setShowReportModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="results-btn results-btn--primary results-report-modal__submit-btn"
+                onClick={handleSubmitReport}
+                disabled={reportSubmitting || reportSelectedItems.length === 0 || !reportElectionId}
+              >
+                {reportSubmitting ? "Submitting…" : `Submit Report${reportSelectedItems.length > 0 ? ` (${reportSelectedItems.length})` : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share / Print result modal (agents only) ───────────────────────── */}
+      {!isOverviewRole && (
+      <ShareResultModal
+        isOpen={showShareModal}
+        onClose={() => { setShowShareModal(false); setShareElectionIdForModal(null); }}
+        electionName={shareElection?.name ?? "Election"}
+        locationLabel={shareLocationLabel}
+        locationName={shareLocationName}
+        aspirants={shareAspirants}
+        totalVotes={shareTotalVotes}
+        generatedAt={new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+      />
+      )}
 
       {/* ── Over-voting full-page modal ───────────────────────────────────── */}
       {showOverVotingModal && (

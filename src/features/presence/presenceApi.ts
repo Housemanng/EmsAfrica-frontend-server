@@ -149,3 +149,95 @@ export const listPresence = createAsyncThunk(
   }
 );
 
+// ─── Collation presence (Ward / LGA / State) ─────────────────────────────────
+
+/** POST /api/presence/me/ward/:wardId/election/:electionId/check-in */
+export const checkInWard = createAsyncThunk(
+  "presence/checkInWard",
+  async (params: { wardId: string; electionId: string }, { getState, rejectWithValue }) => {
+    try {
+      const { wardId, electionId } = params;
+      const res = await api.post(
+        `/presence/me/ward/${wardId}/election/${electionId}/check-in`,
+        {},
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to mark ward presence"
+      );
+    }
+  }
+);
+
+/** POST /api/presence/me/lga/:lgaId/election/:electionId/check-in */
+export const checkInLga = createAsyncThunk(
+  "presence/checkInLga",
+  async (params: { lgaId: string; electionId: string }, { getState, rejectWithValue }) => {
+    try {
+      const { lgaId, electionId } = params;
+      const res = await api.post(
+        `/presence/me/lga/${lgaId}/election/${electionId}/check-in`,
+        {},
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to mark LGA presence"
+      );
+    }
+  }
+);
+
+/** POST /api/presence/me/state/:stateId/election/:electionId/check-in */
+export const checkInState = createAsyncThunk(
+  "presence/checkInState",
+  async (params: { stateId: string; electionId: string }, { getState, rejectWithValue }) => {
+    try {
+      const { stateId, electionId } = params;
+      const res = await api.post(
+        `/presence/me/state/${stateId}/election/${electionId}/check-in`,
+        {},
+        { headers: getAuthHeaders(getState) }
+      );
+      return res.data;
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to mark state presence"
+      );
+    }
+  }
+);
+
+/** GET /api/presence/collation?electionId=&wardId=&lgaId=&stateId= */
+export const listCollationPresence = createAsyncThunk(
+  "presence/listCollationPresence",
+  async (
+    params: {
+      electionId?: string;
+      wardId?: string;
+      lgaId?: string;
+      stateId?: string;
+    } = {},
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const res = await api.get("/presence/collation", {
+        params,
+        headers: getAuthHeaders(getState),
+      });
+      return res.data as { presence: Array<{ user?: { _id?: string; id?: string } }>; count: number };
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string; error?: string } } };
+      return rejectWithValue(
+        err.response?.data?.message ?? err.response?.data?.error ?? "Failed to list collation presence"
+      );
+    }
+  }
+);
+

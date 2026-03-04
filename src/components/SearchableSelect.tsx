@@ -15,6 +15,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
+  searchable?: boolean;
 }
 
 export default function SearchableSelect({
@@ -26,6 +27,7 @@ export default function SearchableSelect({
   placeholder = "Search or select...",
   required = false,
   disabled = false,
+  searchable = true,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -33,11 +35,14 @@ export default function SearchableSelect({
 
   const displayLabel = options.find((o) => o.value === value)?.label ?? value;
 
-  const filtered = options.filter(
-    (o) =>
-      (o.label ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (o.value ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered =
+    searchable
+      ? options.filter(
+          (o) =>
+            (o.label ?? "").toLowerCase().includes(search.toLowerCase()) ||
+            (o.value ?? "").toLowerCase().includes(search.toLowerCase())
+        )
+      : options;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -66,7 +71,7 @@ export default function SearchableSelect({
         aria-haspopup="listbox"
         aria-required={required}
       >
-        {isOpen ? (
+        {isOpen && searchable ? (
           <input
             type="text"
             className="searchable-select__input"

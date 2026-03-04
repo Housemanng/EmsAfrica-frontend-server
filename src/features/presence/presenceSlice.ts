@@ -1,15 +1,30 @@
 import { createSlice, isAnyOf } from "@reduxjs/toolkit";
-import { checkIn, reportMyPresence, listPresence, getPresenceReport } from "./presenceApi";
+import {
+  checkIn,
+  reportMyPresence,
+  listPresence,
+  getPresenceReport,
+  checkInWard,
+  checkInLga,
+  checkInState,
+  listCollationPresence,
+} from "./presenceApi";
 
 const cacheKey = (action: { type: string; meta?: { arg?: unknown } }) => {
   const base = action.type.replace(/\/(pending|fulfilled|rejected)$/, "");
   const arg = action.meta?.arg;
   if (arg === undefined) return base;
-  // For checkIn/reportMyPresence, use only pollingUnitId+electionId so selectors can match
   if (base === "presence/checkIn" || base === "presence/reportMyPresence") {
     const p = arg as { pollingUnitId?: string; electionId?: string };
     if (p?.pollingUnitId && p?.electionId) {
       return `${base}::${JSON.stringify({ pollingUnitId: p.pollingUnitId, electionId: p.electionId })}`;
+    }
+  }
+  if (base === "presence/checkInWard" || base === "presence/checkInLga" || base === "presence/checkInState") {
+    const p = arg as { wardId?: string; lgaId?: string; stateId?: string; electionId?: string };
+    if (p?.electionId) {
+      const loc = p.wardId ? { wardId: p.wardId } : p.lgaId ? { lgaId: p.lgaId } : p.stateId ? { stateId: p.stateId } : {};
+      return `${base}::${JSON.stringify({ ...loc, electionId: p.electionId })}`;
     }
   }
   return `${base}::${JSON.stringify(arg)}`;
@@ -27,7 +42,16 @@ const initialState: PresenceState = {
   error: {},
 };
 
-const allThunks = [checkIn, reportMyPresence, listPresence, getPresenceReport];
+const allThunks = [
+  checkIn,
+  reportMyPresence,
+  listPresence,
+  getPresenceReport,
+  checkInWard,
+  checkInLga,
+  checkInState,
+  listCollationPresence,
+];
 
 const pendingMatcher = isAnyOf(...allThunks.map((t) => t.pending));
 const fulfilledMatcher = isAnyOf(...allThunks.map((t) => t.fulfilled));

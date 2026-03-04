@@ -1,25 +1,63 @@
+/* EMS Design System — Oxygen font + #024764 theme (font loaded in index.html) */
+@import "./theme.css";
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Primary palette — #024764 and shades */
+  --ems-primary: #024764;
+  --ems-primary-dark: #012f40;
+  --ems-primary-darker: #01212e;
+  --ems-primary-light: #035a7a;
+  --ems-primary-lighter: #046d90;
+  --ems-primary-pale: #0580a6;
+
+  /* Backgrounds */
+  --ems-bg: #024764;
+  --ems-bg-alt: #035a7a;
+  --ems-bg-card: rgba(2, 71, 100, 0.95);
+  --ems-bg-elevated: #035a7a;
+  --ems-bg-input: rgba(2, 47, 64, 0.8);
+
+  /* Text */
+  --ems-text: #e8f4f8;
+  --ems-text-muted: #b8dee8;
+  --ems-text-subtle: #8ac4d4;
+
+  /* Accent / CTAs — unified button color */
+  --ems-accent: #06a3c9;
+  --ems-accent-hover: #07b8e0;
+  --ems-accent-light: rgba(6, 163, 201, 0.2);
+  --ems-btn-primary: #06a3c9;
+  --ems-btn-primary-hover: #07b8e0;
+
+  /* Borders */
+  --ems-border: rgba(232, 244, 248, 0.2);
+  --ems-border-focus: rgba(6, 163, 201, 0.6);
+
+  /* Font */
+  font-family: "Oxygen", system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  color: var(--ems-text);
+  background-color: var(--ems-bg);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--ems-accent);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--ems-accent-hover);
 }
 
 body {
@@ -28,39 +66,23 @@ body {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Oxygen", system-ui, sans-serif;
+  color: var(--ems-text);
 }
 
 button {
+  font-family: "Oxygen", system-ui, sans-serif;
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
+  transition: border-color 0.25s, background 0.25s;
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  outline: 2px solid var(--ems-accent);
+  outline-offset: 2px;
 }

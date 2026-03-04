@@ -52,10 +52,20 @@ export const selectResultsByPollingUnitError = (
   return state.results.error[buildKey("results/getResultsByElectionAndPollingUnit", arg)] ?? null;
 };
 
-export const selectAspirantTotalsByElection = (electionId: string) => (state: RootState) =>
-  state.results.cache[buildKey("results/getAspirantTotalsByElection", electionId)] as any;
-export const selectAspirantTotalsByElectionLoading = (electionId: string) => (state: RootState) =>
-  state.results.loading[buildKey("results/getAspirantTotalsByElection", electionId)] ?? false;
+export const selectAspirantTotalsByElection = (
+  electionId: string,
+  params?: { lgaIds?: string[] }
+) => (state: RootState) => {
+  const arg = params?.lgaIds?.length ? { electionId, params } : electionId;
+  return state.results.cache[buildKey("results/getAspirantTotalsByElection", arg)] as any;
+};
+export const selectAspirantTotalsByElectionLoading = (
+  electionId: string,
+  params?: { lgaIds?: string[] }
+) => (state: RootState) => {
+  const arg = params?.lgaIds?.length ? { electionId, params } : electionId;
+  return state.results.loading[buildKey("results/getAspirantTotalsByElection", arg)] ?? false;
+};
 
 export const selectResultsOverview = (electionId: string) => (state: RootState) =>
   state.results.cache[buildKey("results/getResultsOverview", electionId)] as any;

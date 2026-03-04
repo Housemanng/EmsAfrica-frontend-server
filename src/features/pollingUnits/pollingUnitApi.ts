@@ -57,7 +57,9 @@ export const getPollingUnitsByWard = createAsyncThunk(
         `/polling-units/organization/${params.organizationId}/by-ward/${params.wardId}`,
         { headers: getAuthHeaders(getState) }
       );
-      return res.data;
+      // Backend returns { organizationId, wardId, pollingUnits: [...] } — normalise to array
+      const data = res.data;
+      return Array.isArray(data) ? data : (Array.isArray(data?.pollingUnits) ? data.pollingUnits : []);
     } catch (e: any) {
       return rejectWithValue(
         e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get polling units by ward"

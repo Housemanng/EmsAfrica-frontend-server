@@ -11,8 +11,10 @@ import { pollingUnitReducer } from "../features/pollingUnits/pollingUnitSlice";
 import { resultSheetReducer } from "../features/resultSheets/resultSheetSlice";
 import { votingReducer } from "../features/voting/votingSlice";
 import { stateReducer } from "../features/states/stateSlice";
+import { constituencyReducer } from "../features/constituencies/constituencySlice";
 import { presenceReducer } from "../features/presence/presenceSlice";
 import { reportReducer } from "../features/reports/reportSlice";
+import { messageReducer } from "../features/messages/messageSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,12 +26,14 @@ export const store = configureStore({
     wards: wardReducer,
     lgas: lgaReducer,
     states: stateReducer,
+    constituencies: constituencyReducer,
     pollingUnits: pollingUnitReducer,
     resultSheets: resultSheetReducer,
     voting: votingReducer,
     user: userReducer,
     presence: presenceReducer,
     reports: reportReducer,
+    messages: messageReducer,
   },
 });
 

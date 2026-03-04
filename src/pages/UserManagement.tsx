@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import type { AppDispatch, RootState } from "../app/store";
@@ -261,17 +261,13 @@ export default function UserManagement() {
   const needsWard = needsLga && selectedRole !== LGA_COLLATION_ROLE;
   const needsPollingUnit = needsWard && selectedRole !== WARD_COLLATION_ROLE;
 
-  const createLgas = useSelector(
-    (s: RootState) =>
-      (selectLGAsByState(createUserForm.state)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_LOCATION_ARRAY
-  );
-  const createWards = useSelector(
-    (s: RootState) =>
-      (selectWardsByLGA(createUserForm.lga)(s) as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_LOCATION_ARRAY
-  );
-  const createPollingUnitsRaw = useSelector((s: RootState) =>
-    selectPollingUnitsByWard(organizationId ?? "", createUserForm.ward)(s)
-  );
+  const selectCreateLgas         = useMemo(() => selectLGAsByState(createUserForm.state),                           [createUserForm.state]);
+  const selectCreateWards        = useMemo(() => selectWardsByLGA(createUserForm.lga),                              [createUserForm.lga]);
+  const selectCreatePollingUnits = useMemo(() => selectPollingUnitsByWard(organizationId ?? "", createUserForm.ward), [organizationId, createUserForm.ward]);
+
+  const createLgas          = (useSelector(selectCreateLgas)         as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_LOCATION_ARRAY;
+  const createWards         = (useSelector(selectCreateWards)        as { _id?: string; name?: string; code?: string }[] | undefined) ?? EMPTY_LOCATION_ARRAY;
+  const createPollingUnitsRaw = useSelector(selectCreatePollingUnits);
   const createPollingUnits = Array.isArray(createPollingUnitsRaw)
     ? (createPollingUnitsRaw as { _id?: string; name?: string; code?: string }[])
     : ((createPollingUnitsRaw as { pollingUnits?: { _id?: string; name?: string; code?: string }[] })?.pollingUnits ?? []);
@@ -338,36 +334,29 @@ export default function UserManagement() {
     }
   }, [dispatch, organizationId, createUserForm.pollingUnit, needsPollingUnit]);
 
-  const stateUsersPayload = useSelector((s: RootState) =>
-    selectUsersByStateId(organizationId ?? "", createUserForm.state)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const stateUsersLoading = useSelector((s: RootState) =>
-    selectUsersByStateIdLoading(organizationId ?? "", createUserForm.state)(s)
-  );
+  const selectStateUsers        = useMemo(() => selectUsersByStateId(organizationId ?? "", createUserForm.state),               [organizationId, createUserForm.state]);
+  const selectStateUsersLoading = useMemo(() => selectUsersByStateIdLoading(organizationId ?? "", createUserForm.state),        [organizationId, createUserForm.state]);
+  const selectLgaUsers          = useMemo(() => selectUsersByLgaId(organizationId ?? "", createUserForm.lga),                   [organizationId, createUserForm.lga]);
+  const selectLgaUsersLoading   = useMemo(() => selectUsersByLgaIdLoading(organizationId ?? "", createUserForm.lga),            [organizationId, createUserForm.lga]);
+  const selectWardUsers         = useMemo(() => selectUsersByWardId(organizationId ?? "", createUserForm.ward),                 [organizationId, createUserForm.ward]);
+  const selectWardUsersLoading  = useMemo(() => selectUsersByWardIdLoading(organizationId ?? "", createUserForm.ward),          [organizationId, createUserForm.ward]);
+  const selectPuUsers           = useMemo(() => selectUsersByPollingUnitId(organizationId ?? "", createUserForm.pollingUnit),   [organizationId, createUserForm.pollingUnit]);
+  const selectPuUsersLoading    = useMemo(() => selectUsersByPollingUnitIdLoading(organizationId ?? "", createUserForm.pollingUnit), [organizationId, createUserForm.pollingUnit]);
+
+  const stateUsersPayload = useSelector(selectStateUsers)        as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
+  const stateUsersLoading = useSelector(selectStateUsersLoading) as boolean;
   const stateAssignedUsers = stateUsersPayload?.users ?? [];
 
-  const lgaUsersPayload = useSelector((s: RootState) =>
-    selectUsersByLgaId(organizationId ?? "", createUserForm.lga)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const lgaUsersLoading = useSelector((s: RootState) =>
-    selectUsersByLgaIdLoading(organizationId ?? "", createUserForm.lga)(s)
-  );
+  const lgaUsersPayload = useSelector(selectLgaUsers)          as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
+  const lgaUsersLoading = useSelector(selectLgaUsersLoading)   as boolean;
   const lgaAssignedUsers = lgaUsersPayload?.users ?? [];
 
-  const wardUsersPayload = useSelector((s: RootState) =>
-    selectUsersByWardId(organizationId ?? "", createUserForm.ward)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const wardUsersLoading = useSelector((s: RootState) =>
-    selectUsersByWardIdLoading(organizationId ?? "", createUserForm.ward)(s)
-  );
+  const wardUsersPayload = useSelector(selectWardUsers)         as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
+  const wardUsersLoading = useSelector(selectWardUsersLoading)  as boolean;
   const wardAssignedUsers = wardUsersPayload?.users ?? [];
 
-  const puUsersPayload = useSelector((s: RootState) =>
-    selectUsersByPollingUnitId(organizationId ?? "", createUserForm.pollingUnit)(s)
-  ) as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
-  const puUsersLoading = useSelector((s: RootState) =>
-    selectUsersByPollingUnitIdLoading(organizationId ?? "", createUserForm.pollingUnit)(s)
-  );
+  const puUsersPayload = useSelector(selectPuUsers)          as { users?: Array<{ firstName?: string; lastName?: string }> } | undefined;
+  const puUsersLoading = useSelector(selectPuUsersLoading)   as boolean;
   const puAssignedUsers = puUsersPayload?.users ?? [];
 
   const refetchUsers = () => {

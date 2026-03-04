@@ -29,6 +29,11 @@ export const selectUsersByOrganizationId = (organizationId: string) => (state: R
 export const selectUsersByOrganizationIdLoading = (organizationId: string) => (state: RootState) =>
   state.user.loading[buildKey("user/getUsersByOrganizationId", organizationId)] ?? false;
 
+export const selectRegularAdminsByOrganizationId = (organizationId: string) => (state: RootState) =>
+  state.user.cache[buildKey("user/getRegularAdminsByOrganizationId", organizationId)] as any[] | undefined;
+export const selectRegularAdminsByOrganizationIdLoading = (organizationId: string) => (state: RootState) =>
+  state.user.loading[buildKey("user/getRegularAdminsByOrganizationId", organizationId)] ?? false;
+
 export const selectLgaCollationOfficers = (organizationId: string) => (state: RootState) =>
   state.user.cache[buildKey("user/getLgaCollationOfficersByOrganizationId", organizationId)] as any[] | undefined;
 export const selectLgaCollationOfficersLoading = (organizationId: string) => (state: RootState) =>

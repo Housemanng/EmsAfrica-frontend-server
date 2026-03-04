@@ -4,6 +4,7 @@ import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import UserManagement from "../pages/UserManagement";
+import Constituency from "../pages/Constituency";
 import Elections from "../pages/Elections";
 import Results from "../pages/Results";
 import Accreditation from "../pages/Accreditation";
@@ -14,6 +15,8 @@ import LGAResult from "../pages/LGAResult";
 import StateResult from "../pages/StateResult";
 import ResultWinningAnalysis from "../pages/ResultWinningAnalysis";
 import AdminDashboard from "../pages/AdminDashboard";
+import ReportsPage from "../pages/Reports";
+import MessagesPage from "../pages/Messages";
 import NotFound from "../pages/ErrorPage";
 import ErrorPage from "../pages/ErrorPage";
 import { ProtectedRoute } from "../middleware/ProtectedRoute";
@@ -56,6 +59,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/dashboard", element: <Dashboard /> },
       { path: "/dashboard/user-management", element: <UserManagement /> },
+      { path: "/dashboard/constituency", element: <Constituency /> },
       { path: "/elections", element: <Elections /> },
       { path: "/results", element: <Results /> },
       { path: "/accreditation", element: <Accreditation /> },
@@ -65,6 +69,8 @@ export const router = createBrowserRouter([
       { path: "/lga-results", element: <LGAResult /> },
       { path: "/state-results", element: <StateResult /> },
       { path: "/results/winning-analysis", element: <ResultWinningAnalysis /> },
+      { path: "/reports", element: <ReportsPage /> },
+      { path: "/messages", element: <MessagesPage /> },
       { path: "/admin", element: <AdminDashboard /> },
     ],
   },

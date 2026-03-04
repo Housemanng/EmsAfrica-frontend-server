@@ -1,0 +1,284 @@
+/* EMS Theme overrides — apply to all pages using shared classes */
+/* Import this in index.css so it cascades everywhere */
+
+/* Page-level containers */
+.dash-page,
+.results-page,
+.rpt-page,
+.msg-page,
+.dash-content {
+  color: var(--ems-text);
+  font-family: "Oxygen", system-ui, sans-serif;
+}
+
+/* Common breadcrumb */
+.dash-page__breadcrumb,
+.results-page__breadcrumb,
+.rpt-page__breadcrumb {
+  color: var(--ems-text-muted);
+}
+
+/* Common titles */
+.dash-page__title,
+.results-page__title,
+.rpt-page__title {
+  color: var(--ems-text);
+}
+
+/* Cards */
+.dash-card,
+.results-card,
+.rpt-card {
+  background: var(--ems-bg-elevated);
+  border: 1px solid var(--ems-border);
+  color: var(--ems-text);
+}
+
+.dash-card__title,
+.dash-card__value,
+.dash-card__meta {
+  color: var(--ems-text);
+}
+
+.dash-card__meta--muted {
+  color: var(--ems-text-muted);
+}
+
+/* Buttons */
+.dash-page__btn--outline {
+  background: transparent;
+  border: 1px solid var(--ems-border);
+  color: var(--ems-text);
+}
+
+.dash-page__btn--outline:hover {
+  background: var(--ems-primary-light);
+}
+
+.dash-page__btn--solid {
+  background: var(--ems-accent);
+  border: none;
+  color: #fff;
+}
+
+.dash-page__btn--solid:hover {
+  background: var(--ems-accent-hover);
+}
+
+/* ── Tables ── */
+.dash-table-wrapper {
+  background: var(--ems-bg-elevated) !important;
+  border-color: var(--ems-border) !important;
+}
+
+.dash-table th,
+.results-table th,
+.rpt-table th {
+  background: var(--ems-primary-dark) !important;
+  color: var(--ems-text-muted) !important;
+  border-color: var(--ems-border) !important;
+}
+
+.dash-table td,
+.results-table td,
+.rpt-table td {
+  color: var(--ems-text) !important;
+  border-color: var(--ems-border) !important;
+}
+
+.dash-table tr:hover td,
+.results-table tr:hover td,
+.rpt-table tr:hover td {
+  background: var(--ems-primary-light) !important;
+}
+
+/* ── Unified buttons (primary / create / accent) ── */
+button[type="submit"],
+.dash-page__btn--solid,
+.dash-card__cta,
+.dash-card__cta--primary,
+.results-btn--primary,
+.results-table__save-btn,
+.rpt-btn--primary,
+.dash-modal__btn--primary,
+.constituency-modal__btn--primary,
+[class*="btn--primary"],
+[class*="btn--solid"] {
+  background: var(--ems-btn-primary) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+button[type="submit"]:hover:not(:disabled),
+.dash-page__btn--solid:hover,
+.dash-card__cta:hover,
+.dash-card__cta--primary:hover,
+.results-btn--primary:hover:not(:disabled),
+.results-table__save-btn:hover:not(:disabled),
+.rpt-btn--primary:hover:not(:disabled),
+.dash-modal__btn--primary:hover:not(:disabled),
+.constituency-modal__btn--primary:hover:not(:disabled),
+[class*="btn--primary"]:hover:not(:disabled),
+[class*="btn--solid"]:hover {
+  background: var(--ems-btn-primary-hover) !important;
+  color: #fff !important;
+}
+
+/* ── Inputs & Modals (shared shades) ── */
+.dash-page input,
+.dash-page select,
+.dash-page textarea,
+.rpt-page input,
+.rpt-page select,
+.rpt-page textarea,
+.results-page input,
+.results-page select,
+.results-page textarea,
+.msg-page input,
+.msg-page select,
+.msg-page textarea,
+[class*="modal"] input,
+[class*="modal"] select,
+[class*="modal"] textarea {
+  background: var(--ems-bg-input) !important;
+  border-color: var(--ems-border) !important;
+  color: var(--ems-text) !important;
+}
+
+.dash-page input::placeholder,
+.dash-page textarea::placeholder,
+.rpt-page input::placeholder,
+.rpt-page textarea::placeholder,
+.results-page input::placeholder,
+.results-page textarea::placeholder,
+.msg-page input::placeholder,
+.msg-page textarea::placeholder,
+[class*="modal"] input::placeholder,
+[class*="modal"] textarea::placeholder {
+  color: var(--ems-text-subtle) !important;
+}
+
+.dash-page input:focus,
+.dash-page select:focus,
+.dash-page textarea:focus,
+.rpt-page input:focus,
+.rpt-page select:focus,
+.rpt-page textarea:focus,
+.results-page input:focus,
+.results-page select:focus,
+.results-page textarea:focus,
+.msg-page input:focus,
+.msg-page select:focus,
+.msg-page textarea:focus,
+[class*="modal"] input:focus,
+[class*="modal"] select:focus,
+[class*="modal"] textarea:focus {
+  border-color: var(--ems-accent) !important;
+  box-shadow: 0 0 0 2px var(--ems-accent-light) !important;
+  outline: none !important;
+}
+
+/* Modal overlays & panels */
+[class*="modal"] [class*="head"],
+[class*="modal"] [class*="header"] {
+  border-bottom-color: var(--ems-border) !important;
+}
+
+[class*="modal"] [class*="footer"] {
+  border-top-color: var(--ems-border) !important;
+}
+
+[class*="modal"] [class*="title"] {
+  color: var(--ems-text) !important;
+}
+
+.rpt-field label,
+.dash-modal label,
+[class*="modal"] label {
+  color: var(--ems-text-muted) !important;
+}
+
+/* ── Date inputs (customized picker) ── */
+.dash-page input[type="date"],
+.rpt-page input[type="date"],
+.results-page input[type="date"],
+.msg-page input[type="date"],
+[class*="modal"] input[type="date"],
+input[type="date"].dash-input {
+  background: var(--ems-bg-input) !important;
+  border: 1px solid var(--ems-border) !important;
+  color: var(--ems-text) !important;
+  color-scheme: dark;
+  cursor: pointer;
+  font-family: "Oxygen", system-ui, sans-serif;
+}
+
+.dash-page input[type="date"]:focus,
+.rpt-page input[type="date"]:focus,
+.results-page input[type="date"]:focus,
+.msg-page input[type="date"]:focus,
+[class*="modal"] input[type="date"]:focus,
+input[type="date"].dash-input:focus {
+  border-color: var(--ems-accent) !important;
+  box-shadow: 0 0 0 2px var(--ems-accent-light) !important;
+  outline: none !important;
+}
+
+/* Calendar picker icon — light/visible on dark background */
+.dash-page input[type="date"]::-webkit-calendar-picker-indicator,
+.rpt-page input[type="date"]::-webkit-calendar-picker-indicator,
+.results-page input[type="date"]::-webkit-calendar-picker-indicator,
+.msg-page input[type="date"]::-webkit-calendar-picker-indicator,
+[class*="modal"] input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="date"].dash-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* Date/time edit text inside input */
+.dash-page input[type="date"]::-webkit-datetime-edit,
+.rpt-page input[type="date"]::-webkit-datetime-edit,
+.results-page input[type="date"]::-webkit-datetime-edit,
+.msg-page input[type="date"]::-webkit-datetime-edit,
+[class*="modal"] input[type="date"]::-webkit-datetime-edit {
+  color: var(--ems-text);
+}
+
+.dash-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.rpt-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.results-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.msg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+[class*="modal"] input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+/* Fallback: any date input (e.g. Signup) */
+input[type="date"] {
+  background: var(--ems-bg-input) !important;
+  border: 1px solid var(--ems-border) !important;
+  color: var(--ems-text) !important;
+  color-scheme: dark;
+  font-family: "Oxygen", system-ui, sans-serif;
+  padding: 0.5rem 0.75rem;
+  padding-right: 2rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+input[type="date"]:focus {
+  border-color: var(--ems-accent) !important;
+  box-shadow: 0 0 0 2px var(--ems-accent-light) !important;
+  outline: none !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  color: var(--ems-text);
+}

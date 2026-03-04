@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { SlArrowLeft } from "react-icons/sl";
+import { SlArrowLeft, SlLock } from "react-icons/sl";
 import { logout, updateUser, setParty } from "../features/auth/authSlice";
-import type { RootState } from "../app/store";
+import type { AppDispatch, RootState } from "../app/store";
 import UserDetailsModal from "../components/UserDetailsModal";
 import api from "../config/apiConfig";
+import { getConversations, getMyMessages } from "../features/messages/messageApi";
+import { selectUnreadCount, selectTotalConversationUnread } from "../features/messages/messageSelectors";
 import "./Layout.css";
+import "../pages/Dashboard.css";
 
 /* eslint-disable max-len */
 const IconGrid = () => (
@@ -48,6 +51,11 @@ const IconFile = () => (
     <path d="M14 2v6h6" />
     <path d="M16 13H8" />
     <path d="M16 17H8" />
+  </svg>
+);
+const IconMessageSquare = () => (
+  <svg className="dash-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
 const IconCalendar = () => (
@@ -154,6 +162,18 @@ const IconMenu = () => (
     <path d="M3 18h18" />
   </svg>
 );
+const IconCross = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    width="20"
+    height="20"
+  >
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
 const IconWard = () => (
   <svg
     className="dash-sidebar__icon"
@@ -193,6 +213,18 @@ const IconState = () => (
     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
   </svg>
 );
+const IconConstituency = () => (
+  <svg
+    className="dash-sidebar__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
 const IconPresence = () => (
   <svg
     className="dash-sidebar__icon"
@@ -221,10 +253,32 @@ export default function Layout() {
   const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
   const role = useSelector((state: RootState) => state.auth.role);
   const authParty = useSelector((state: RootState) => state.auth.party);
+
+  /* Unread message selectors (combined below after isOverviewRole is defined) */
+  const unreadInboxCount   = useSelector(selectUnreadCount);
+  const unreadConvCount    = useSelector(selectTotalConversationUnread);
+
+  /* Unread report count — uses isRead flag returned by the server */
+  const unreadReportCount = useSelector((state: RootState) => {
+    const cache = state.reports.cache;
+    let count = 0;
+    const seen = new Set<string>();
+    for (const key of Object.keys(cache)) {
+      const list = cache[key];
+      if (!Array.isArray(list)) continue;
+      for (const r of list as { _id?: string; isRead?: boolean }[]) {
+        if (r._id && !seen.has(r._id) && !r.isRead) {
+          seen.add(r._id);
+          count++;
+        }
+      }
+    }
+    return count;
+  });
 
   const handleLogout = () => {
     dispatch(logout());
@@ -258,6 +312,23 @@ export default function Layout() {
       })
       .catch(() => setTenantContext(null));
   }, []);
+
+  // Fetch message counts from DB for sidebar badge (initial + periodic refetch)
+  const organizationId = tenantContext?.organization?._id;
+  useEffect(() => {
+    if (!organizationId || !user?.id) return;
+    const isOverview = role === "executive" || role === "regular" || role === "superadmin";
+    const fetch = () => {
+      if (isOverview) {
+        dispatch(getConversations(organizationId));
+      } else {
+        dispatch(getMyMessages(organizationId));
+      }
+    };
+    fetch();
+    const interval = setInterval(fetch, 60000); // refetch every 60s to stay in sync with DB
+    return () => clearInterval(interval);
+  }, [dispatch, organizationId, user?.id, role]);
 
   useEffect(() => {
     if (!user?.id || !token) return;
@@ -316,16 +387,17 @@ export default function Layout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   const isOverviewRole = role === "executive" || role === "regular" || role === "superadmin";
+  const unreadMsgCount = isOverviewRole ? unreadConvCount : unreadInboxCount;
 
   const AGENT_ROLE_HOME: Record<string, string> = {
-    presiding_officer_po_agent: "/accreditation",
-    ra_ward_collation_officer_agent: "/ward-results",
-    lga_collation_officer_agent: "/lga-results",
-    state_constituency_returning_officer_agent: "/state-results",
-    federal_constituency_returning_officer_agent: "/state-results",
-    senatorial_district_agent: "/state-results",
-    state_returning_officer_agent: "/state-results",
-    national_level_agent: "/state-results",
+    presiding_officer_po_agent: "/results",
+    ra_ward_collation_officer_agent: "/results",
+    lga_collation_officer_agent: "/results",
+    state_constituency_returning_officer_agent: "/results",
+    federal_constituency_returning_officer_agent: "/results",
+    senatorial_district_agent: "/results",
+    state_returning_officer_agent: "/results",
+    national_level_agent: "/results",
   };
 
   useEffect(() => {
@@ -356,16 +428,20 @@ export default function Layout() {
   const partyLogo = tenantContext?.party?.logo ?? authParty?.logo;
   const partyAcronym = tenantContext?.party?.acronym ?? authParty?.acronym;
 
+  const showSidebar = isOverviewRole; // executive, superadmin, regular only
+
   return (
-    <div className="dash-layout">
-      <div
-        className={`dash-sidebar__overlay ${sidebarOpen ? "dash-sidebar__overlay--visible" : ""}`}
-        onClick={closeSidebar}
-        aria-hidden
-      />
-      <aside
-        className={`dash-sidebar ${sidebarOpen ? "dash-sidebar--open" : ""}`}
-      >
+    <div className={`dash-layout ${!showSidebar ? "dash-layout--no-sidebar" : ""}`}>
+      {showSidebar && (
+        <>
+          <div
+            className={`dash-sidebar__overlay ${sidebarOpen ? "dash-sidebar__overlay--visible" : ""}`}
+            onClick={closeSidebar}
+            aria-hidden
+          />
+          <aside
+            className={`dash-sidebar ${sidebarOpen ? "dash-sidebar--open" : ""}`}
+          >
         <div className="dash-sidebar__logo">EMS</div>
         <nav className="dash-sidebar__nav">
           <div className="dash-sidebar__section">
@@ -388,6 +464,16 @@ export default function Layout() {
               >
                 <IconUsers /> Agent Management
                 {location.pathname === "/dashboard/user-management" && <IconChevronRight />}
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/dashboard/constituency"
+                className={`dash-sidebar__link ${location.pathname === "/dashboard/constituency" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconConstituency /> Constituency
+                {location.pathname === "/dashboard/constituency" && <IconChevronRight />}
               </Link>
             )}
             {isOverviewRole && (
@@ -419,7 +505,7 @@ export default function Layout() {
                 <IconChart /> Analytics
               </Link>
             )}
-            {(isOverviewRole || role === "presiding_officer_po_agent") && (
+            {isOverviewRole && (
               <Link
                 to="/accreditation"
                 className={`dash-sidebar__link ${location.pathname === "/accreditation" ? "dash-sidebar__link--active" : ""}`}
@@ -430,54 +516,38 @@ export default function Layout() {
               </Link>
             )}
            
-            {/* <Link
+            <Link
               to="/results"
               className={`dash-sidebar__link ${location.pathname === "/results" ? "dash-sidebar__link--active" : ""}`}
               onClick={closeSidebar}
             >
               <IconEdit /> Polling Unit Results{" "}
               {location.pathname === "/results" && <IconChevronRight />}
-            </Link> */}
-            {(role === "presiding_officer_po_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
-              <Link
-              to="/results"
-              className={`dash-sidebar__link ${location.pathname === "/results" ? "dash-sidebar__link--active" : ""}`}
+            </Link>
+            <Link
+              to="/ward-results"
+              className={`dash-sidebar__link ${location.pathname === "/ward-results" ? "dash-sidebar__link--active" : ""}`}
               onClick={closeSidebar}
             >
-              <IconEdit /> Polling Unit Results{" "}
-              {location.pathname === "/results" && <IconChevronRight />}
-              </Link>
-            )}
-            {(role === "ra_ward_collation_officer_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
-              <Link
-                to="/ward-results"
-                className={`dash-sidebar__link ${location.pathname === "/ward-results" ? "dash-sidebar__link--active" : ""}`}
-                onClick={closeSidebar}
-              >
-                <IconWard /> Ward Results{" "}
-                {location.pathname === "/ward-results" && <IconChevronRight />}
-              </Link>
-            )}
-            {(role === "lga_collation_officer_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
-              <Link
-                to="/lga-results"
-                className={`dash-sidebar__link ${location.pathname === "/lga-results" ? "dash-sidebar__link--active" : ""}`}
-                onClick={closeSidebar}
-              >
-                <IconLGA /> LGA Results{" "}
-                {location.pathname === "/lga-results" && <IconChevronRight />}
-              </Link>
-            )}
-            {(role === "state_constituency_returning_officer_agent" || role === "superadmin" || role === "executive" || role === "regular") && (
-              <Link
-                to="/state-results"
-                className={`dash-sidebar__link ${location.pathname === "/state-results" ? "dash-sidebar__link--active" : ""}`}
-                onClick={closeSidebar}
-              >
-                <IconState /> State Results{" "}
-                {location.pathname === "/state-results" && <IconChevronRight />}
-              </Link>
-            )}
+              <IconWard /> Ward Results{" "}
+              {location.pathname === "/ward-results" && <IconChevronRight />}
+            </Link>
+            <Link
+              to="/lga-results"
+              className={`dash-sidebar__link ${location.pathname === "/lga-results" ? "dash-sidebar__link--active" : ""}`}
+              onClick={closeSidebar}
+            >
+              <IconLGA /> LGA Results{" "}
+              {location.pathname === "/lga-results" && <IconChevronRight />}
+            </Link>
+            <Link
+              to="/state-results"
+              className={`dash-sidebar__link ${location.pathname === "/state-results" ? "dash-sidebar__link--active" : ""}`}
+              onClick={closeSidebar}
+            >
+              <IconState /> State Results{" "}
+              {location.pathname === "/state-results" && <IconChevronRight />}
+            </Link>
             {isOverviewRole && (
               <Link
                 to="/results/winning-analysis"
@@ -490,13 +560,38 @@ export default function Layout() {
                 )}
               </Link>
             )}
-            <Link
-              to="/dashboard"
-              className="dash-sidebar__link"
-              onClick={closeSidebar}
-            >
-              <IconFile /> Reports
-            </Link>
+            {isOverviewRole && (
+              <Link
+                to="/reports"
+                className={`dash-sidebar__link ${location.pathname === "/reports" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconFile />
+                <span className="dash-sidebar__link-label">Reports</span>
+                {unreadReportCount > 0 && (
+                  <span className="dash-sidebar__badge" title={`${unreadReportCount} unread report${unreadReportCount !== 1 ? "s" : ""}`}>
+                    {unreadReportCount > 99 ? "99+" : unreadReportCount}
+                  </span>
+                )}
+                {location.pathname === "/reports" && <IconChevronRight />}
+              </Link>
+            )}
+            {isOverviewRole && (
+              <Link
+                to="/messages"
+                className={`dash-sidebar__link ${location.pathname === "/messages" ? "dash-sidebar__link--active" : ""}`}
+                onClick={closeSidebar}
+              >
+                <IconMessageSquare />
+                <span className="dash-sidebar__link-label">Messages</span>
+                {unreadMsgCount > 0 && (
+                  <span className="dash-sidebar__badge" title={`${unreadMsgCount} unread message${unreadMsgCount !== 1 ? "s" : ""}`}>
+                    {unreadMsgCount > 99 ? "99+" : unreadMsgCount}
+                  </span>
+                )}
+                {location.pathname === "/messages" && <IconChevronRight />}
+              </Link>
+            )}
             {/* {role !== "user" && (
               <Link
                 to="/admin"
@@ -543,33 +638,59 @@ export default function Layout() {
           </div>
         </nav>
       </aside>
+        </>
+      )}
 
       <main className="dash-main">
         <header className="dash-header">
           <div className="dash-header__top-bar">
-            <div className="dash-header__avatar-top" aria-hidden>
-            <div
-              className="dash-header__avatar"
-              title={user?.username || "User"}
-            >
-              {user?.photo ? (
-                <img
-                  src={user.photo}
-                  alt=""
-                  onError={handlePhotoError}
-                />
-              ) : (
-                initials
-              )}
+            <div className="dash-header__avatar-top">
+              <div
+                className="dash-header__avatar"
+                title={user?.username || "User"}
+              >
+                {user?.photo ? (
+                  <img
+                    src={user.photo}
+                    alt=""
+                    onError={handlePhotoError}
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
             </div>
-          </div>
+            <div className="dash-header__top-bar-right">
+              <div className="dash-header__mobile-logo">
+                {partyLogo ? (
+                  <img src={partyLogo} alt={partyAcronym || "Logo"} className="dash-header__mobile-logo-img" />
+                ) : (
+                  <span className="dash-header__mobile-logo-text">EMS</span>
+                )}
+              </div>
+             
+
+              <div
+                  onClick={handleLogout}
+                  aria-label="Logout"
+                  title="Logout"
+                  className="dash-header__btn dash-header__btn--logout dash-header__logout-icon"
+                >
+                  <SlLock size={20} />
+                </div>
+
+
+
+              {showSidebar && (
             <button
               type="button"
-              className={`dash-sidebar__toggle ${partyLogo ? "dash-sidebar__toggle--logo" : ""}`}
+              className={`dash-sidebar__toggle ${!sidebarOpen && partyLogo ? "dash-sidebar__toggle--logo" : ""}`}
               onClick={() => setSidebarOpen((o) => !o)}
-              aria-label="Toggle menu"
+              aria-label={sidebarOpen ? "Close menu" : "Open menu"}
             >
-              {partyLogo ? (
+              {sidebarOpen ? (
+                <IconCross />
+              ) : partyLogo ? (
                 <>
                   <SlArrowLeft className="dash-sidebar__toggle-arrow" />
                   <div className="dash-sidebar__toggle-logo-wrap">
@@ -584,6 +705,8 @@ export default function Layout() {
                 <IconMenu />
               )}
             </button>
+            )}
+            </div>
           </div>
           <div className="dash-header__row">
             <div className="dash-header__greeting-wrap">
@@ -604,47 +727,48 @@ export default function Layout() {
               )}
             </div>
             <div className="dash-header__actions">
-              <button
-                type="button"
-                className="dash-header__btn"
-                aria-label="Notifications"
-              >
-                <IconBell />
-              </button>
-              <div
-                className="dash-header__avatar dash-header__avatar--desktop"
-                title={user?.username || "User"}
-              >
-                {user?.photo ? (
-                  <img
-                    src={user.photo}
-                    alt=""
-                    onError={handlePhotoError}
-                  />
-                ) : (
-                  initials
-                )}
-              </div>
-              <button
-                type="button"
-                className="dash-header__btn"
-                onClick={handleLogout}
-                aria-label="Logout"
-                title="Logout"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  width="18"
-                  height="18"
+             
+
+
+              
+              <div className="dash-header__profile-wrap">
+                <div
+                  className="dash-header__avatar dash-header__avatar--desktop"
+                  title={user?.username || "User"}
                 >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
+                  {user?.photo ? (
+                    <img
+                      src={user.photo}
+                      alt=""
+                      onError={handlePhotoError}
+                    />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                
+                <div
+                 
+                  aria-label="Logout"
+                  title="Logout"
+                  className="dash-header__btn dash-header__btn--logout dash-header__logout-icon"
+                >
+                  <IconBell />
+                </div>
+
+<div
+                  onClick={handleLogout}
+                  aria-label="Logout"
+                  title="Logout"
+                  className="dash-header__btn dash-header__btn--logout dash-header__logout-icon"
+                >
+                  <SlLock size={20} />
+                </div>
+             
+
+
+
+              </div>
             </div>
           </div>
         </header>

@@ -30,9 +30,12 @@ export function usePresenceSocket(
     s.io.on("reconnect", joinRoom);
 
     return () => {
-      s.off("presence:updated", handler);
-      s.io.off("reconnect", joinRoom);
-      s.off("connect", joinRoom);
+      try {
+        s.off("presence:updated");
+        s.io?.off("reconnect");
+      } catch (_) {
+        /* ignore */
+      }
     };
   }, [electionId]);
 }

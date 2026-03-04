@@ -3,6 +3,9 @@ import type { RootState } from "../../app/store";
 const buildKey = (prefix: string, arg?: unknown) =>
   arg !== undefined ? `${prefix}::${JSON.stringify(arg)}` : prefix;
 
+/** Stable empty array — returned when there is no cached data. */
+const EMPTY_ARRAY: never[] = [];
+
 export const selectPollingUnitCache = (state: RootState) => state.pollingUnits.cache;
 export const selectPollingUnitLoading = (state: RootState) => state.pollingUnits.loading;
 export const selectPollingUnitError = (state: RootState) => state.pollingUnits.error;
@@ -39,10 +42,15 @@ export const selectUsersByPollingUnitIdLoading = (
 export const selectPollingUnitsByWard = (
   organizationId: string,
   wardId: string
-) => (state: RootState) =>
-  state.pollingUnits.cache[
+) => (state: RootState) => {
+  const val = state.pollingUnits.cache[
     buildKey("pollingUnits/getPollingUnitsByWard", { organizationId, wardId })
-  ] as any | undefined;
+  ];
+  // Normalise: always return an array (backend may have cached { pollingUnits: [...] })
+  if (Array.isArray(val)) return val;
+  if (val && Array.isArray((val as any).pollingUnits)) return (val as any).pollingUnits;
+  return EMPTY_ARRAY;
+};
 export const selectPollingUnitsByWardLoading = (
   organizationId: string,
   wardId: string

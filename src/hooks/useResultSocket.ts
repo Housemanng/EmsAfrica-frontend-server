@@ -69,10 +69,13 @@ export function useResultSocket(
     s.io.on("reconnect", joinRooms);
 
     return () => {
-      s.off("result", handler);
-      s.io.off("reconnect", joinRooms);
-      s.off("connect", joinRooms);
-      if (bulkTimer) clearTimeout(bulkTimer);
+      try {
+        s.off("result");
+        s.io?.off("reconnect");
+        if (bulkTimer) clearTimeout(bulkTimer);
+      } catch (_) {
+        /* ignore */
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);

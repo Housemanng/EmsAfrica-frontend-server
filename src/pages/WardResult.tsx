@@ -26,6 +26,11 @@ import {
   selectAspirantsByElectionLoading,
 } from "../features/aspirants";
 import { selectRole } from "../features/auth/authSelectors";
+import { selectUnreadCount } from "../features/messages";
+import { checkInWard, listCollationPresence } from "../features/presence/presenceApi";
+import { selectListCollationPresence } from "../features/presence/presenceSelectors";
+import { ResultsMessagesModal } from "../components/ResultsMessagesModal";
+import { ResultsReportModal } from "../components/ResultsReportModal";
 import "./Results.css";
 
 const IconChevronDown = () => (
@@ -153,6 +158,10 @@ function WardElectionCard({
   onSave,
   onSaveAll,
   isReadOnly,
+  isWardAgent,
+  hasMarkedPresence,
+  onMarkPresence,
+  markPresenceLoading,
 }: {
   el: { _id: string; name: string; status?: string };
   wardId: string;
@@ -174,7 +183,26 @@ function WardElectionCard({
   onSave: (electionId: string, aspirantId: string) => void;
   onSaveAll: (electionId: string) => void;
   isReadOnly?: boolean;
+  isWardAgent?: boolean;
+  hasMarkedPresence?: boolean;
+  onMarkPresence?: (electionId: string) => void;
+  markPresenceLoading?: boolean;
+  currentUserId?: string;
 }) {
+  const collationPresenceData = useSelector(
+    selectListCollationPresence({ electionId: el._id, wardId }),
+  ) as { presence?: Array<{ user?: { _id?: string; id?: string } }> } | undefined;
+  const presenceList = collationPresenceData?.presence ?? [];
+  const hasMarkedPresenceResolved =
+    hasMarkedPresence ??
+    (currentUserId
+      ? presenceList.some(
+          (p) =>
+            String(p.user?._id) === String(currentUserId) ||
+            String(p.user?.id) === String(currentUserId),
+        )
+      : true);
+
   const wardTotalsSpecific = useSelector(
     selectAspirantTotalsByWard(el._id, wardId),
   ) as AspirantTotalsShape | undefined;
@@ -273,7 +301,31 @@ function WardElectionCard({
 
       {isExpanded && (
         <div className="results-election-card__body">
-          {expandedAspirantsLoading ? (
+          {isWardAgent && !hasMarkedPresenceResolved ? (
+            <div className="results-pu-card results-pu-card--mark-presence" style={{ maxWidth: "20rem" }}>
+              <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="23" y1="11" x2="17" y2="11" />
+                </svg>
+              </span>
+              <div className="results-pu-card__body">
+                <span className="results-pu-card__label">Ward presence only</span>
+                <span className="results-pu-card__sublabel">Mark your presence to enter results for this election</span>
+                <button
+                  type="button"
+                  className="results-btn results-btn--primary"
+                  style={{ marginTop: "0.375rem", padding: "0.3rem 0.75rem", fontSize: "0.75rem" }}
+                  onClick={() => onMarkPresence?.(el._id)}
+                  disabled={markPresenceLoading}
+                >
+                  {markPresenceLoading ? "Marking…" : "Mark presence"}
+                </button>
+              </div>
+            </div>
+          ) : expandedAspirantsLoading ? (
             <p className="results-view__empty" style={{ margin: 0 }}>
               Loading aspirants…
             </p>
@@ -420,6 +472,12 @@ export default function WardResult() {
     null,
   );
   const [accordionSavingAll, setAccordionSavingAll] = useState(false);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [markPresenceLoading, setMarkPresenceLoading] = useState(false);
+
+  const unreadCount = useSelector(selectUnreadCount);
+  const currentUserId = (user as { _id?: string; id?: string })?.id ?? (user as { _id?: string })?._id ?? "";
 
   const organizationId =
     (user as { organization?: { _id?: string; id?: string } })?.organization
@@ -495,6 +553,9 @@ export default function WardResult() {
           );
           dispatch(getResultsByElectionAndWard({ electionId: el._id, wardId }));
         }
+        if (role === WARD_AGENT_ROLE && wardId) {
+          dispatch(listCollationPresence({ electionId: el._id, wardId }));
+        }
       });
     }
   }, [dispatch, electionsList.map((e) => e._id).join(","), wardId, role]);
@@ -509,9 +570,34 @@ export default function WardResult() {
     if (id && wardId) {
       dispatch(getAspirantTotalsByElectionAndWard({ electionId: id, wardId }));
       dispatch(getResultsByElectionAndWard({ electionId: id, wardId }));
+      if (role === WARD_AGENT_ROLE) {
+        dispatch(listCollationPresence({ electionId: id, wardId }));
+      }
     }
     if (id) {
       dispatch(getAspirantsByElection(id));
+    }
+  };
+
+  const handleMarkPresence = async (electionId: string) => {
+    if (!wardId) return;
+    setMarkPresenceLoading(true);
+    setAccordionMessage(null);
+    try {
+      await dispatch(checkInWard({ wardId, electionId })).unwrap();
+      setAccordionMessage({
+        type: "success",
+        text: "Ward presence marked. You can now enter results.",
+      });
+      dispatch(listCollationPresence({ electionId, wardId }));
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "payload" in err
+          ? (err as { payload?: string }).payload
+          : "Failed to mark presence.";
+      setAccordionMessage({ type: "error", text: String(msg) });
+    } finally {
+      setMarkPresenceLoading(false);
     }
   };
 
@@ -693,9 +779,44 @@ export default function WardResult() {
 
   return (
     <div className="results-page">
-      <div>
-        <p className="results-page__breadcrumb">EMS / Ward Results</p>
-        <h1 className="results-page__title">Ward Results</h1>
+      <div className="results-page__header">
+        <div>
+          <p className="results-page__breadcrumb">EMS / Ward Results</p>
+          <h1 className="results-page__title">Ward Results</h1>
+        </div>
+        {role === WARD_AGENT_ROLE && (
+          <div className="results-page__header-actions">
+            <button
+              type="button"
+              className="results-btn results-btn--messages"
+              onClick={() => setShowMessagesModal(true)}
+              title="View messages"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Messages
+              {unreadCount > 0 && (
+                <span className="results-btn__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              className="results-btn results-btn--report"
+              onClick={() => setShowReportModal(true)}
+              title="Submit an incident report"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              Report
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="results-polling-unit">
@@ -717,9 +838,11 @@ export default function WardResult() {
 
       {electionsList.length > 0 && (
         <div className="results-card results-elections-section">
-          <h2 className="results-card__heading">Elections – Ward Collation</h2>
+          <h2 className="results-card__heading">Ward presence only</h2>
           <p className="results-elections-section__hint">
-            Expand an election to view aspirants and enter or review votes.
+            {role === WARD_AGENT_ROLE
+              ? "Mark your presence for each election to enter ward results."
+              : "Expand an election to view aspirants and enter or review votes."}
           </p>
           {accordionMessage && (
             <div
@@ -751,7 +874,11 @@ export default function WardResult() {
                 onVoteChange={handleAspirantVoteChange}
                 onSave={handleSaveAspirantResult}
                 onSaveAll={handleSaveAllAspirantResults}
-                isReadOnly={false}
+                isReadOnly={isOverviewRole}
+                isWardAgent={role === WARD_AGENT_ROLE}
+                onMarkPresence={handleMarkPresence}
+                markPresenceLoading={markPresenceLoading}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
@@ -764,6 +891,22 @@ export default function WardResult() {
         <div className="results-card" style={{ marginTop: "1rem" }}>
           <p className="results-view__empty">No active elections found.</p>
         </div>
+      )}
+
+      {role === WARD_AGENT_ROLE && showMessagesModal && (
+        <ResultsMessagesModal
+          isOpen={showMessagesModal}
+          onClose={() => setShowMessagesModal(false)}
+          organizationId={organizationId}
+        />
+      )}
+      {role === WARD_AGENT_ROLE && showReportModal && (
+        <ResultsReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          electionsList={electionsList}
+          locationBody={wardId ? { wardId } : {}}
+        />
       )}
     </div>
   );

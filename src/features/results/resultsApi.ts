@@ -40,7 +40,13 @@ export const getParties = createAsyncThunk(
 export const getResultsByElection = createAsyncThunk(
   "results/getResultsByElection",
   async (
-    { electionId, params }: { electionId: string; params?: { pollingUnitId?: string; source?: string } },
+    {
+      electionId,
+      params
+    }: {
+      electionId: string;
+      params?: { pollingUnitId?: string; wardId?: string; lgaId?: string; source?: string };
+    },
     { getState, rejectWithValue }
   ) => {
     try {
@@ -79,9 +85,19 @@ export const getResultsByElectionAndPollingUnit = createAsyncThunk(
 
 export const getAspirantTotalsByElection = createAsyncThunk(
   "results/getAspirantTotalsByElection",
-  async (electionId: string, { getState, rejectWithValue }) => {
+  async (
+    arg: string | { electionId: string; params?: { lgaIds?: string[] } },
+    { getState, rejectWithValue }
+  ) => {
+    const electionId = typeof arg === "string" ? arg : arg.electionId;
+    const params = typeof arg === "string" ? undefined : arg.params;
+    const queryParams: Record<string, string> = {};
+    if (params?.lgaIds?.length) {
+      queryParams.lgaIds = params.lgaIds.join(",");
+    }
     try {
       const res = await api.get(`/results/election/${electionId}/aspirant-totals`, {
+        params: Object.keys(queryParams).length ? queryParams : undefined,
         headers: getAuthHeaders(getState),
       });
       return res.data;

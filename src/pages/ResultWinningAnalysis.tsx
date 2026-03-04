@@ -81,7 +81,10 @@ export default function ResultWinningAnalysis() {
         <aside className="result-list">
           <h2 className="result-list__title">Winning Parties</h2>
           {WINNING_PARTIES.map((party) => (
-            <div key={party.id} className="result-list__item">
+            <div
+              key={party.id}
+              className={`result-list__item ${party.status === "Leading" ? "result-list__item--leading" : ""}`}
+            >
               <PartyThumb party={party} />
               <div className="result-list__info">
                 <p className="result-list__name">{party.name}</p>

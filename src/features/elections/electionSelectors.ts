@@ -26,21 +26,45 @@ export const selectElectionByIdLoading = (id: string) => (state: RootState) =>
 
 export const selectElectionsByOrganizationId = (
   organizationId: string,
-  query?: { state?: string; status?: string; group?: string; includeResults?: boolean }
+  query?: {
+    state?: string;
+    status?: string;
+    group?: string;
+    includeResults?: boolean;
+    lgaId?: string;
+    wardId?: string;
+    pollingUnitId?: string;
+  }
 ) => (state: RootState) => {
   const arg = query ? { organizationId, query } : { organizationId };
   return state.elections.cache[buildKey("elections/getElectionsByOrganizationId", arg)] as any[] | undefined;
 };
 export const selectElectionsByOrganizationIdLoading = (
   organizationId: string,
-  query?: { state?: string; status?: string; group?: string; includeResults?: boolean }
+  query?: {
+    state?: string;
+    status?: string;
+    group?: string;
+    includeResults?: boolean;
+    lgaId?: string;
+    wardId?: string;
+    pollingUnitId?: string;
+  }
 ) => (state: RootState) => {
   const arg = query ? { organizationId, query } : { organizationId };
   return state.elections.loading[buildKey("elections/getElectionsByOrganizationId", arg)] ?? false;
 };
 export const selectElectionsByOrganizationIdError = (
   organizationId: string,
-  query?: { state?: string; status?: string; group?: string; includeResults?: boolean }
+  query?: {
+    state?: string;
+    status?: string;
+    group?: string;
+    includeResults?: boolean;
+    lgaId?: string;
+    wardId?: string;
+    pollingUnitId?: string;
+  }
 ) => (state: RootState) => {
   const arg = query ? { organizationId, query } : { organizationId };
   return state.elections.error[buildKey("elections/getElectionsByOrganizationId", arg)] as string | null | undefined;

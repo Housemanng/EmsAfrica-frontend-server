@@ -30,6 +30,11 @@ import {
   selectAspirantsByElectionLoading,
 } from "../features/aspirants";
 import { selectRole } from "../features/auth/authSelectors";
+import { selectUnreadCount } from "../features/messages";
+import { checkInState, listCollationPresence } from "../features/presence/presenceApi";
+import { selectListCollationPresence } from "../features/presence/presenceSelectors";
+import { ResultsMessagesModal } from "../components/ResultsMessagesModal";
+import { ResultsReportModal } from "../components/ResultsReportModal";
 import "./Results.css";
 
 const IconChevronDown = () => (
@@ -139,6 +144,10 @@ function StateElectionCard({
   onSave,
   onSaveAll,
   isReadOnly,
+  isStateAgent,
+  onMarkPresence,
+  markPresenceLoading,
+  currentUserId,
 }: {
   el: { _id: string; name: string; status?: string };
   stateId: string;
@@ -153,7 +162,23 @@ function StateElectionCard({
   onSave: (electionId: string, aspirantId: string) => void;
   onSaveAll: (electionId: string) => void;
   isReadOnly?: boolean;
+  isStateAgent?: boolean;
+  onMarkPresence?: (electionId: string) => void;
+  markPresenceLoading?: boolean;
+  currentUserId?: string;
 }) {
+  const collationPresenceData = useSelector(
+    selectListCollationPresence({ electionId: el._id, stateId }),
+  ) as { presence?: Array<{ user?: { _id?: string; id?: string } }> } | undefined;
+  const presenceList = collationPresenceData?.presence ?? [];
+  const hasMarkedPresenceResolved = currentUserId
+    ? presenceList.some(
+        (p) =>
+          String(p.user?._id) === String(currentUserId) ||
+          String(p.user?.id) === String(currentUserId),
+      )
+    : true;
+
   const stateTotalsSpecific = useSelector(
     selectAspirantTotalsByStateLocal(el._id, stateId)
   ) as AspirantTotalsShape | undefined;
@@ -231,7 +256,31 @@ function StateElectionCard({
 
       {isExpanded && (
         <div className="results-election-card__body">
-          {expandedAspirantsLoading ? (
+          {isStateAgent && !hasMarkedPresenceResolved ? (
+            <div className="results-pu-card results-pu-card--mark-presence" style={{ maxWidth: "20rem" }}>
+              <span className="results-pu-card__icon-wrap results-pu-card__icon-wrap--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="23" y1="11" x2="17" y2="11" />
+                </svg>
+              </span>
+              <div className="results-pu-card__body">
+                <span className="results-pu-card__label">State presence only</span>
+                <span className="results-pu-card__sublabel">Mark your presence to enter results for this election</span>
+                <button
+                  type="button"
+                  className="results-btn results-btn--primary"
+                  style={{ marginTop: "0.375rem", padding: "0.3rem 0.75rem", fontSize: "0.75rem" }}
+                  onClick={() => onMarkPresence?.(el._id)}
+                  disabled={markPresenceLoading}
+                >
+                  {markPresenceLoading ? "Marking…" : "Mark presence"}
+                </button>
+              </div>
+            </div>
+          ) : expandedAspirantsLoading ? (
             <p className="results-view__empty" style={{ margin: 0 }}>Loading aspirants…</p>
           ) : !expandedAspirants?.length ? (
             <p className="results-view__empty" style={{ margin: 0 }}>No aspirants for this election.</p>
@@ -350,6 +399,12 @@ export default function StateResult() {
   const [accordionMessage, setAccordionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [accordionSavingId, setAccordionSavingId] = useState<string | null>(null);
   const [accordionSavingAll, setAccordionSavingAll] = useState(false);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [markPresenceLoading, setMarkPresenceLoading] = useState(false);
+
+  const unreadCount = useSelector(selectUnreadCount);
+  const currentUserId = (user as { _id?: string; id?: string })?.id ?? (user as { _id?: string })?._id ?? "";
 
   const organizationId = (user as { organization?: { _id?: string; id?: string } })?.organization?._id
     ?? (user as { organization?: { _id?: string; id?: string } })?.organization?.id
@@ -400,6 +455,9 @@ export default function StateResult() {
         if (stateId) {
           dispatch(getAspirantTotalsByElectionAndState({ electionId: el._id, stateId }));
           dispatch(getResultsByElectionAndState({ electionId: el._id, stateId }));
+          if (role === STATE_AGENT_ROLE) {
+            dispatch(listCollationPresence({ electionId: el._id, stateId }));
+          }
         }
       });
     }
@@ -415,9 +473,31 @@ export default function StateResult() {
     if (id && stateId) {
       dispatch(getAspirantTotalsByElectionAndState({ electionId: id, stateId }));
       dispatch(getResultsByElectionAndState({ electionId: id, stateId }));
+      if (role === STATE_AGENT_ROLE) {
+        dispatch(listCollationPresence({ electionId: id, stateId }));
+      }
     }
     if (id) {
       dispatch(getAspirantsByElection(id));
+    }
+  };
+
+  const handleMarkPresence = async (electionId: string) => {
+    if (!stateId) return;
+    setMarkPresenceLoading(true);
+    setAccordionMessage(null);
+    try {
+      await dispatch(checkInState({ stateId, electionId })).unwrap();
+      setAccordionMessage({ type: "success", text: "State presence marked. You can now enter results." });
+      dispatch(listCollationPresence({ electionId, stateId }));
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "payload" in err
+          ? (err as { payload?: string }).payload
+          : "Failed to mark presence.";
+      setAccordionMessage({ type: "error", text: String(msg) });
+    } finally {
+      setMarkPresenceLoading(false);
     }
   };
 
@@ -582,9 +662,44 @@ export default function StateResult() {
 
   return (
     <div className="results-page">
-      <div>
-        <p className="results-page__breadcrumb">EMS / State Results</p>
-        <h1 className="results-page__title">State Results</h1>
+      <div className="results-page__header">
+        <div>
+          <p className="results-page__breadcrumb">EMS / State Results</p>
+          <h1 className="results-page__title">State Results</h1>
+        </div>
+        {role === STATE_AGENT_ROLE && (
+          <div className="results-page__header-actions">
+            <button
+              type="button"
+              className="results-btn results-btn--messages"
+              onClick={() => setShowMessagesModal(true)}
+              title="View messages"
+            >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Messages
+            {unreadCount > 0 && (
+              <span className="results-btn__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            className="results-btn results-btn--report"
+            onClick={() => setShowReportModal(true)}
+            title="Submit an incident report"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Report
+          </button>
+          </div>
+        )}
       </div>
 
       <div className="results-polling-unit">
@@ -604,9 +719,11 @@ export default function StateResult() {
 
       {electionsList.length > 0 && (
         <div className="results-card results-elections-section">
-          <h2 className="results-card__heading">Elections – State Collation</h2>
+          <h2 className="results-card__heading">State presence only</h2>
           <p className="results-elections-section__hint">
-            Expand an election to view aspirants and enter or review votes.
+            {role === STATE_AGENT_ROLE
+              ? "Mark your presence for each election to enter state results."
+              : "Expand an election to view aspirants and enter or review votes."}
           </p>
           {accordionMessage && (
             <div
@@ -632,7 +749,11 @@ export default function StateResult() {
                 onVoteChange={handleAspirantVoteChange}
                 onSave={handleSaveAspirantResult}
                 onSaveAll={handleSaveAllAspirantResults}
-                isReadOnly={false}
+                isReadOnly={isOverviewRole}
+                isStateAgent={role === STATE_AGENT_ROLE}
+                onMarkPresence={handleMarkPresence}
+                markPresenceLoading={markPresenceLoading}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
@@ -645,6 +766,22 @@ export default function StateResult() {
         <div className="results-card" style={{ marginTop: "1rem" }}>
           <p className="results-view__empty">No active elections found.</p>
         </div>
+      )}
+
+      {role === STATE_AGENT_ROLE && showMessagesModal && (
+        <ResultsMessagesModal
+          isOpen={showMessagesModal}
+          onClose={() => setShowMessagesModal(false)}
+          organizationId={organizationId}
+        />
+      )}
+      {role === STATE_AGENT_ROLE && showReportModal && (
+        <ResultsReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          electionsList={electionsList}
+          locationBody={stateId ? { stateId } : {}}
+        />
       )}
     </div>
   );

@@ -3,6 +3,10 @@ import type { RootState } from "../../app/store";
 const buildKey = (prefix: string, arg?: unknown) =>
   arg !== undefined ? `${prefix}::${JSON.stringify(arg)}` : prefix;
 
+/** Stable empty array — returned by selectors when there is no cached data,
+ *  so useSelector gets the same reference on every render and doesn't warn. */
+const EMPTY_ARRAY: never[] = [];
+
 export const selectLGACache = (state: RootState) => state.lgas.cache;
 export const selectLGALoading = (state: RootState) => state.lgas.loading;
 export const selectLGAError = (state: RootState) => state.lgas.error;
@@ -20,7 +24,7 @@ export const selectAllLGAsError = (state: RootState) =>
   state.lgas.error[buildKey("lgas/getAllLGAs")] ?? null;
 
 export const selectLGAsByState = (stateId: string) => (state: RootState) =>
-  state.lgas.cache[buildKey("lgas/getLGAsByState", stateId)] as any[] | undefined;
+  (state.lgas.cache[buildKey("lgas/getLGAsByState", stateId)] as any[] | undefined) ?? EMPTY_ARRAY;
 export const selectLGAsByStateLoading = (stateId: string) => (state: RootState) =>
   state.lgas.loading[buildKey("lgas/getLGAsByState", stateId)] ?? false;
 

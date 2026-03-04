@@ -49,14 +49,22 @@ export const getElectionsByOrganizationId = createAsyncThunk(
   async (
     params: {
       organizationId: string;
-      query?: { state?: string; status?: string; group?: string; includeResults?: boolean };
+      query?: {
+        state?: string;
+        status?: string;
+        group?: string;
+        includeResults?: boolean;
+        lgaId?: string;
+        wardId?: string;
+        pollingUnitId?: string;
+      };
     },
     { getState, rejectWithValue }
   ) => {
     try {
-      const query = { ...params.query };
+      const query = { ...params.query } as Record<string, string>;
       if (query.includeResults) {
-        (query as Record<string, string>).includeResults = "true";
+        query.includeResults = "true";
       }
       const res = await api.get(
         `/elections/organization/${params.organizationId}`,
@@ -218,6 +226,7 @@ export const createElectionByOrganizationId = createAsyncThunk(
         electionGroup?: string;
         state?: string;
         settings?: Record<string, unknown>;
+        coverage?: { type: "state" | "lga" | "wards"; ids: string[] };
       };
     },
     { getState, rejectWithValue }
@@ -251,6 +260,7 @@ export const updateElection = createAsyncThunk(
         status: string;
         electionGroup: string;
         settings: Record<string, unknown>;
+        coverage?: { type: "state" | "lga" | "wards"; ids: string[] };
       }>;
     },
     { getState, rejectWithValue }

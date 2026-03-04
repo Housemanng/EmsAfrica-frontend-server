@@ -48,6 +48,23 @@ export const getUserById = createAsyncThunk(
   }
 );
 
+/** GET /api/users/organization/:organizationId/regular-admins – open to all org members incl. agents */
+export const getRegularAdminsByOrganizationId = createAsyncThunk(
+  "user/getRegularAdminsByOrganizationId",
+  async (organizationId: string, { getState, rejectWithValue }) => {
+    try {
+      const res = await api.get(`/users/organization/${organizationId}/regular-admins`, {
+        headers: getAuthHeaders(getState),
+      });
+      return res.data;
+    } catch (e: any) {
+      return rejectWithValue(
+        e.response?.data?.error ?? e.response?.data?.message ?? "Failed to get regular admins"
+      );
+    }
+  }
+);
+
 /** GET /api/users/organization/:organizationId – list users in org */
 export const getUsersByOrganizationId = createAsyncThunk(
   "user/getUsersByOrganizationId",

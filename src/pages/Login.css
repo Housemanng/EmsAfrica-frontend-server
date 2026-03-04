@@ -1,24 +1,27 @@
+/* Login page — #024764 theme */
 .login-page {
   position: relative;
   height: 100vh;
   max-height: 100dvh;
   overflow: hidden;
-  background: #000;
+  background: var(--ems-primary);
+  background-image: linear-gradient(160deg, var(--ems-primary-dark) 0%, var(--ems-primary) 50%, var(--ems-primary-light) 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 1rem;
   box-sizing: border-box;
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__grid {
   position: absolute;
   inset: 0;
-  opacity: 0.03;
+  opacity: 0.06;
   pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
@@ -36,7 +39,7 @@
   max-width: 45%;
   max-height: 45%;
   object-fit: contain;
-  opacity: 0.06;
+  opacity: 0.08;
 }
 
 .login-page__main-footer {
@@ -45,8 +48,9 @@
   flex-shrink: 0;
   padding: 0.5rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--ems-text-subtle);
   font-size: 0.65rem;
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__container {
@@ -100,12 +104,13 @@
   width: 100%;
   max-height: 100%;
   overflow: hidden;
-  background: rgba(24, 24, 27, 0.9);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(63, 63, 70, 0.5);
+  background: var(--ems-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--ems-border);
   border-radius: 1rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
   padding: clamp(1rem, 4vh, 2rem);
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__org-banner {
@@ -116,10 +121,10 @@
   text-align: center;
   padding: 0.5rem 0.75rem;
   margin: 0 0 clamp(0.75rem, 2vh, 1rem) 0;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--ems-accent-light);
+  border: 1px solid var(--ems-accent);
   border-radius: 0.5rem;
-  color: #fbbf24;
+  color: var(--ems-text);
   font-size: clamp(0.875rem, 2vh, 1rem);
   font-weight: 600;
 }
@@ -129,7 +134,7 @@
   height: 2.5rem;
   object-fit: contain;
   border-radius: 0.375rem;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   flex-shrink: 0;
 }
 
@@ -148,7 +153,7 @@
 
 .login-page__org-state {
   font-weight: 500;
-  color: #a1a1aa;
+  color: var(--ems-text-muted);
 }
 
 .login-page__title-wrap {
@@ -159,21 +164,24 @@
 .login-page__logo {
   font-size: clamp(1.25rem, 3vh, 1.5rem);
   font-weight: 700;
-  color: #fff;
+  color: var(--ems-text);
   letter-spacing: -0.025em;
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__subtitle {
-  color: #a1a1aa;
+  color: var(--ems-text-muted);
   font-size: clamp(0.75rem, 1.8vh, 0.875rem);
   margin-top: 0.15rem;
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__heading {
   font-size: clamp(1rem, 2.2vh, 1.125rem);
   font-weight: 600;
-  color: #fff;
+  color: var(--ems-text);
   margin-bottom: clamp(0.5rem, 1.5vh, 1rem);
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__form {
@@ -195,19 +203,24 @@
   width: 100%;
   padding: clamp(0.5rem, 1.5vh, 0.75rem) 1rem;
   padding-top: 1.25em;
-  background: #27272a;
-  border: 1px solid #52525b;
+  background: var(--ems-bg-input);
+  border: 1px solid var(--ems-border);
   border-radius: 0.5rem;
-  color: #fff;
+  color: var(--ems-text);
   font-size: clamp(0.875rem, 2vh, 1rem);
+  font-family: "Oxygen", system-ui, sans-serif;
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.login-page__input::placeholder {
+  color: var(--ems-text-subtle);
+}
+
 .login-page__input:focus {
   outline: none;
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  border-color: var(--ems-accent);
+  box-shadow: 0 0 0 2px var(--ems-accent-light);
 }
 
 .login-page__float {
@@ -216,9 +229,10 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: clamp(0.875rem, 2vh, 1rem);
-  color: #71717a;
+  color: var(--ems-text-subtle);
   pointer-events: none;
   transition: transform 0.25s ease, font-size 0.25s ease, color 0.25s ease, top 0.25s ease, left 0.25s ease;
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__input-wrap--focused .login-page__float,
@@ -227,30 +241,32 @@
   left: 1rem;
   transform: translateY(0) translateX(0);
   font-size: 0.7rem;
-  color: #f59e0b;
-  background: rgba(24, 24, 27, 0.95);
+  color: var(--ems-accent);
+  background: var(--ems-bg-card);
   padding: 0 0.25rem;
 }
 
 .login-page__error {
-  color: #f87171;
+  color: #fca5a5;
   font-size: clamp(0.75rem, 1.8vh, 0.875rem);
 }
 
 .login-page__btn {
   width: 100%;
   padding: clamp(0.5rem, 1.5vh, 0.75rem) 1rem;
-  background: #f59e0b;
+  background: var(--ems-accent);
   border: none;
   border-radius: 0.5rem;
-  color: #000;
+  color: #fff;
   font-size: 1rem;
   font-weight: 600;
+  font-family: "Oxygen", system-ui, sans-serif;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
-.login-page__btn:hover {
-  background: #d97706;
+.login-page__btn:hover:not(:disabled) {
+  background: var(--ems-accent-hover);
 }
 
 .login-page__btn:disabled {
@@ -261,11 +277,12 @@
 .login-page__suspended {
   padding: 1rem;
   margin-bottom: 1rem;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
   border-radius: 0.5rem;
   color: #fca5a5;
   font-size: 0.9rem;
+  font-family: "Oxygen", system-ui, sans-serif;
 }
 
 .login-page__suspended p {
@@ -277,8 +294,9 @@
 }
 
 .login-page__footer {
-  color: #71717a;
+  color: var(--ems-text-muted);
   font-size: clamp(0.65rem, 1.5vh, 0.75rem);
   text-align: center;
   margin-top: clamp(0.5rem, 1.5vh, 1rem);
+  font-family: "Oxygen", system-ui, sans-serif;
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
 import {
@@ -169,9 +169,16 @@ export default function Accreditation() {
       : level === "state"
       ? getLocationId(u?.state)
       : null;
+  const electionsQuery = useMemo(() => {
+    const q: { includeResults: boolean; lgaId?: string; wardId?: string; pollingUnitId?: string } = { includeResults: true };
+    if (level === "polling_unit" && locationIdForRole) q.pollingUnitId = locationIdForRole;
+    else if (level === "ward" && locationIdForRole) q.wardId = locationIdForRole;
+    else if (level === "lga" && locationIdForRole) q.lgaId = locationIdForRole;
+    return q;
+  }, [level, locationIdForRole]);
   const electionsFromResults = useSelector(selectElections) ?? [];
   const electionsWithTotals = useSelector(
-    selectElectionsByOrganizationId(organizationId ?? "", { includeResults: true })
+    selectElectionsByOrganizationId(organizationId ?? "", electionsQuery)
   ) ?? [];
   const elections = (electionsWithTotals?.length ? electionsWithTotals : electionsFromResults) ?? electionsFromResults ?? [];
 
@@ -185,9 +192,9 @@ export default function Accreditation() {
 
   useEffect(() => {
     if (organizationId) {
-      dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
+      dispatch(getElectionsByOrganizationId({ organizationId, query: electionsQuery }));
     }
-  }, [dispatch, organizationId]);
+  }, [dispatch, organizationId, JSON.stringify(electionsQuery)]);
 
 
   useEffect(() => {
@@ -268,7 +275,7 @@ export default function Accreditation() {
     // so overview roles (regular / executive / superadmin) see live totals without refreshing
     () => {
       if (organizationId) {
-        dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
+        dispatch(getElectionsByOrganizationId({ organizationId, query: electionsQuery }));
       }
     }
   );
@@ -611,7 +618,9 @@ export default function Accreditation() {
         </div>
       </div>
 
-      {(organizationId || electionsList.length > 0 || isPO) && (
+      {isPO && electionsList.length === 0 ? (
+        <p className="results-view__empty" style={{ margin: 0 }}>There is no election</p>
+      ) : (organizationId || electionsList.length > 0 || isPO) ? (
         <div className="results-card results-pu-upper">
           <h2 className="results-card__heading">Polling Unit – Voting - Presence - Accreditation</h2>
 
@@ -996,7 +1005,7 @@ export default function Accreditation() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
 
       {/* ── Over-voting full-page modal ───────────────────────────────────── */}

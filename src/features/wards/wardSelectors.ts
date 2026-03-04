@@ -3,6 +3,9 @@ import type { RootState } from "../../app/store";
 const buildKey = (prefix: string, arg?: unknown) =>
   arg !== undefined ? `${prefix}::${JSON.stringify(arg)}` : prefix;
 
+/** Stable empty array — returned when there is no cached data. */
+const EMPTY_ARRAY: never[] = [];
+
 export const selectWardCache = (state: RootState) => state.wards.cache;
 export const selectWardLoading = (state: RootState) => state.wards.loading;
 export const selectWardError = (state: RootState) => state.wards.error;
@@ -20,7 +23,7 @@ export const selectAllWardsError = (state: RootState) =>
   state.wards.error[buildKey("wards/getAllWards")] ?? null;
 
 export const selectWardsByLGA = (lgaId: string) => (state: RootState) =>
-  state.wards.cache[buildKey("wards/getWardsByLGA", lgaId)] as any[] | undefined;
+  (state.wards.cache[buildKey("wards/getWardsByLGA", lgaId)] as any[] | undefined) ?? EMPTY_ARRAY;
 export const selectWardsByLGALoading = (lgaId: string) => (state: RootState) =>
   state.wards.loading[buildKey("wards/getWardsByLGA", lgaId)] ?? false;
 
