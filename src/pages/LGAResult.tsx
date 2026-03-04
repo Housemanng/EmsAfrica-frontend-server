@@ -701,11 +701,7 @@ export default function LGAResult() {
           <span className="results-polling-unit__label">User</span>
           <span className="results-polling-unit__value">{user?.username || "—"}</span>
         </div>
-        <div className="results-polling-unit__item">
-          <span className="results-polling-unit__label">Role</span>
-          <span className="results-polling-unit__value">{role || "—"}</span>
-        </div>
-        <div className="results-polling-unit__item">
+        <div className="results-polling-unit__item results-polling-unit__item--lga">
           <span className="results-polling-unit__label">LGA</span>
           <span className="results-polling-unit__value">{lgaName}</span>
         </div>

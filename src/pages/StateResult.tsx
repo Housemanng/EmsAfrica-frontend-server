@@ -707,11 +707,7 @@ export default function StateResult() {
           <span className="results-polling-unit__label">User</span>
           <span className="results-polling-unit__value">{user?.username || "—"}</span>
         </div>
-        <div className="results-polling-unit__item">
-          <span className="results-polling-unit__label">Role</span>
-          <span className="results-polling-unit__value">{role || "—"}</span>
-        </div>
-        <div className="results-polling-unit__item">
+        <div className="results-polling-unit__item results-polling-unit__item--state">
           <span className="results-polling-unit__label">State</span>
           <span className="results-polling-unit__value">{stateName}</span>
         </div>

@@ -826,11 +826,7 @@ export default function WardResult() {
             {user?.username || "—"}
           </span>
         </div>
-        <div className="results-polling-unit__item">
-          <span className="results-polling-unit__label">Role</span>
-          <span className="results-polling-unit__value">{role || "—"}</span>
-        </div>
-        <div className="results-polling-unit__item">
+        <div className="results-polling-unit__item results-polling-unit__item--ward">
           <span className="results-polling-unit__label">Ward</span>
           <span className="results-polling-unit__value">{wardName}</span>
         </div>

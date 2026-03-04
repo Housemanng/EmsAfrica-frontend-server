@@ -2531,17 +2531,6 @@ export default function Results() {
             {user?.username || "—"}
           </span>
         </div> */}
-        <div className="results-polling-unit__item">
-          <span className="results-polling-unit__label">Role</span>
-          <span className="results-polling-unit__value">
-            {role
-              ? (ROLE_LABELS[role] ??
-                role
-                  .replace(/_/g, " ")
-                  .replace(/\b\w/g, (c) => c.toUpperCase()))
-              : "—"}
-          </span>
-        </div>
         {/* {user?.phoneNumber && (
           <div className="results-polling-unit__item">
             <span className="results-polling-unit__label">Phone</span>
@@ -2551,7 +2540,7 @@ export default function Results() {
           </div>
         )} */}
         {u?.lga && (
-          <div className="results-polling-unit__item">
+          <div className="results-polling-unit__item results-polling-unit__item--lga">
             <span className="results-polling-unit__label">LGA</span>
             <span className="results-polling-unit__value">
               {getLocationName(u.lga)}
@@ -2559,14 +2548,14 @@ export default function Results() {
           </div>
         )}
         {u?.ward && (
-          <div className="results-polling-unit__item">
+          <div className="results-polling-unit__item results-polling-unit__item--ward">
             <span className="results-polling-unit__label">Ward</span>
             <span className="results-polling-unit__value">
               {getLocationName(u.ward)}
             </span>
           </div>
         )}
-        <div className="results-polling-unit__item">
+        <div className={`results-polling-unit__item results-polling-unit__item--${level === "polling_unit" ? "pu" : level === "ward" ? "ward" : level === "lga" ? "lga" : level === "state" ? "state" : "location"}`}>
           <span className="results-polling-unit__label">
             {level === "polling_unit"
               ? "Polling Unit"
