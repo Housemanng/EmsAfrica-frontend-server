@@ -207,7 +207,7 @@ export default function Constituency() {
     }
   };
 
-  const handleStateChange = (stateId: string) => {
+  const handleStateChange = (_stateId: string) => {
     setSelectedLgaForWards("");
   };
 

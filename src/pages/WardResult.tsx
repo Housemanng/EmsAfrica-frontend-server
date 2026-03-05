@@ -162,6 +162,7 @@ function WardElectionCard({
   hasMarkedPresence,
   onMarkPresence,
   markPresenceLoading,
+  currentUserId,
 }: {
   el: { _id: string; name: string; status?: string };
   wardId: string;

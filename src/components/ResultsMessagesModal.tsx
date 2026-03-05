@@ -748,7 +748,7 @@ export function ResultsMessagesModal({
                 rows={1}
                 placeholder={
                   openMessage || activeUserId
-                    ? "Type a message… (Enter to send)"
+                    ? "Type a message… (Enter to send, Shift+Enter for new line)"
                     : "Select a user or message first"
                 }
                 value={replyText}

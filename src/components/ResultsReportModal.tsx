@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../app/store";
 import {
@@ -35,6 +35,16 @@ export function ResultsReportModal({
   const [reportNotes, setReportNotes] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportMsg, setReportMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const reportNotesRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustReportNotesHeight = () => {
+    const el = reportNotesRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxH = 200;
+    el.style.overflowY = el.scrollHeight > maxH ? "auto" : "hidden";
+    el.style.height = `${Math.min(el.scrollHeight, maxH)}px`;
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +56,10 @@ export function ResultsReportModal({
       setReportMsg(null);
     }
   }, [isOpen, electionsList]);
+
+  useEffect(() => {
+    adjustReportNotesHeight();
+  }, [reportNotes]);
 
   const handleReportItemToggle = (item: string) => {
     setReportSelectedItems((prev) =>
@@ -215,6 +229,7 @@ export function ResultsReportModal({
               Additional notes <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
             </label>
             <textarea
+              ref={reportNotesRef}
               id="report-notes"
               className="results-report-modal__textarea"
               rows={3}

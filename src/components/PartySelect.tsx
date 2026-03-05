@@ -21,7 +21,7 @@ interface PartySelectProps {
   loading?: boolean;
 }
 
-function PartyOption({ party, isSelected }: { party: Party; isSelected: boolean }) {
+function PartyOption({ party }: { party: Party; isSelected?: boolean }) {
   return (
     <div className="party-select__option-content">
       <div className="party-select__option-logo">

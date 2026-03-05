@@ -2467,8 +2467,10 @@
   font-size: 0.875rem;
   color: var(--ems-text);
   background: var(--ems-bg-input);
-  resize: vertical;
+  resize: none;
   min-height: 4.5rem;
+  max-height: 200px;
+  overflow-y: auto;
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s;

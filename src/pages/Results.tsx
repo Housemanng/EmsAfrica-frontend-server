@@ -256,22 +256,6 @@ const getLocationId = (loc: LocationRef | undefined | null): string | null => {
 const getLocationName = (loc: { name?: string } | string | undefined) =>
   !loc ? "—" : typeof loc === "object" ? (loc.name ?? "—") : loc;
 
-const ROLE_LABELS: Record<string, string> = {
-  regular: "Regular",
-  superadmin: "Super Admin",
-  executive: "Executive",
-  presiding_officer_po_agent: "Presiding Officer (PO) Agent",
-  ra_ward_collation_officer_agent: "RA / Ward Collation Officer Agent",
-  lga_collation_officer_agent: "LGA Collation Officer Agent",
-  state_constituency_returning_officer_agent:
-    "State Constituency Returning Officer Agent",
-  federal_constituency_returning_officer_agent:
-    "Federal Constituency Returning Officer Agent",
-  senatorial_district_agent: "Senatorial District Agent",
-  state_returning_officer_agent: "State Returning Officer Agent",
-  national_level_agent: "National Level Agent",
-};
-
 const AGENT_ROLES = {
   presiding_officer_po_agent: "polling_unit",
   ra_ward_collation_officer_agent: "ward",
@@ -1173,6 +1157,16 @@ export default function Results() {
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [showSidebarDrawer, setShowSidebarDrawer] = useState(false);
   const msgBottomRef = useRef<HTMLDivElement>(null);
+  const composeInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustComposeHeight = () => {
+    const el = composeInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxH = 140;
+    el.style.overflowY = el.scrollHeight > maxH ? "auto" : "hidden";
+    el.style.height = `${Math.min(el.scrollHeight, maxH)}px`;
+  };
 
   // ── Share / Print result modal ─────────────────────────────────────────────
   const [showShareModal, setShowShareModal] = useState(false);
@@ -1782,6 +1776,10 @@ export default function Results() {
       handleSendReply();
     }
   };
+
+  useEffect(() => {
+    adjustComposeHeight();
+  }, [replyText]);
 
   // Real-time messages via Socket.io — no polling
   useEffect(() => {
@@ -3642,9 +3640,10 @@ export default function Results() {
                 {replyError && <p className="rmc-chat__error">{replyError}</p>}
                 <div className={`rmc-chat__compose-inner${(!openMessage && !activeUserId) ? " rmc-chat__compose-inner--disabled" : ""}`}>
                   <textarea
+                    ref={composeInputRef}
                     className="rmc-chat__input"
                     rows={1}
-                    placeholder={openMessage || activeUserId ? "Type a message… (Enter to send)" : "Select a user or message first"}
+                    placeholder={openMessage || activeUserId ? "Type a message… (Enter to send, Shift+Enter for new line)" : "Select a user or message first"}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     onKeyDown={handleMsgKeyDown}
