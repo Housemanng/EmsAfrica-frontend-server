@@ -404,6 +404,15 @@ export default function Messages() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
 
+  const adjustComposeHeight = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxH = 140;
+    el.style.overflowY = el.scrollHeight > maxH ? "auto" : "hidden";
+    el.style.height = `${Math.min(el.scrollHeight, maxH)}px`;
+  };
+
   // ── Initial fetch ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -562,6 +571,10 @@ export default function Messages() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeAgentId, threads, openMessage]);
+
+  useEffect(() => {
+    adjustComposeHeight();
+  }, [inputText]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 

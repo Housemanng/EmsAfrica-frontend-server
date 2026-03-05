@@ -53,6 +53,16 @@ export function ResultsMessagesModal({
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [showSidebarDrawer, setShowSidebarDrawer] = useState(false);
   const msgBottomRef = useRef<HTMLDivElement>(null);
+  const composeInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustComposeHeight = () => {
+    const el = composeInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxH = 140;
+    el.style.overflowY = el.scrollHeight > maxH ? "auto" : "hidden";
+    el.style.height = `${Math.min(el.scrollHeight, maxH)}px`;
+  };
 
   const inbox = useSelector(selectInbox);
   const inboxLoading = useSelector(selectInboxLoading);
@@ -183,6 +193,10 @@ export function ResultsMessagesModal({
       handleSendReply();
     }
   };
+
+  useEffect(() => {
+    adjustComposeHeight();
+  }, [replyText]);
 
   useEffect(() => {
     if (!organizationId || !isOpen) return;
@@ -729,6 +743,7 @@ export function ResultsMessagesModal({
               className={`rmc-chat__compose-inner${!openMessage && !activeUserId ? " rmc-chat__compose-inner--disabled" : ""}`}
             >
               <textarea
+                ref={composeInputRef}
                 className="rmc-chat__input"
                 rows={1}
                 placeholder={

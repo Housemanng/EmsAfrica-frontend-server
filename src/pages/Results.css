@@ -3605,10 +3605,11 @@
   font-size: 0.855rem;
   color: var(--ems-text);
   resize: none;
-  min-height: 20px;
-  max-height: 100px;
+  min-height: 24px;
+  max-height: 140px;
   line-height: 1.5;
   font-family: inherit;
+  overflow-y: auto;
 }
 
 .rmc-chat__input::placeholder { color: var(--ems-text-subtle); }
