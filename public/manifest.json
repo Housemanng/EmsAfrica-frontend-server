@@ -4,8 +4,8 @@
   "description": "Electoral Monitoring System for authorized agents",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#024764",
+  "theme_color": "#024764",
   "orientation": "portrait-primary",
   "icons": [
     {

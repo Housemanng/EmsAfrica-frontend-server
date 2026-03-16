@@ -132,7 +132,9 @@ export default function Login() {
             <div className="login-page__org-banner">
               <div>{tenantContext.organization.name}</div>
               {tenantContext.state?.name && (
-                <div className="login-page__org-state">{tenantContext.state.name}</div>
+                <div className="login-page__org-state">
+                  {tenantContext.state.name.toUpperCase()}
+                </div>
               )}
             </div>
           </div>
@@ -214,7 +216,7 @@ export default function Login() {
       </div>
 
       <footer className="login-page__main-footer">
-        This is a product of Cleeq24 Ltd. <br/>All rights reserved from 2015 to {currentYear}.
+        This is a product of CleeQ24 Ltd. <br/>All rights reserved from 2015 to {currentYear}.
       </footer>
     </div>
   );

@@ -98,6 +98,9 @@
 .login-page__org-top .login-page__org-state {
   font-size: 0.85em;
   margin-top: 0.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ems-text-muted);
 }
 
 .login-page__card {
