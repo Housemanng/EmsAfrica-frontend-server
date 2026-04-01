@@ -204,6 +204,7 @@ interface Election {
   name: string;
   type: string;
   electionDate: string;
+  createdAt?: string;
   status: "upcoming" | "active" | "concluded";
   electionGroup?: string;
   state?: { _id: string; name?: string; code?: string };
@@ -421,7 +422,8 @@ export default function Elections() {
     }
   }, [dispatch, showReportModal, reportElection, organizationId]);
 
-  const filteredElections = (elections ?? []).filter((e) => {
+  const filteredElections = (elections ?? [])
+    .filter((e) => {
     const matchesStatus = !statusFilter || e.status === statusFilter;
     const q = search.toLowerCase();
     const matchesSearch =
@@ -430,7 +432,13 @@ export default function Elections() {
       formatType(e.type).toLowerCase().includes(q) ||
       (e.electionGroup ?? "").toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
-  });
+    })
+    // Newest first (so newly created elections show at top)
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.electionDate ?? 0).getTime();
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.electionDate ?? 0).getTime();
+      return bTime - aTime;
+    });
 
   const counts = {
     total: (elections ?? []).length,

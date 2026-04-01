@@ -13,7 +13,7 @@ import PollingUnitResult from "../pages/PollingUnitResult";
 import WardResult from "../pages/WardResult";
 import LGAResult from "../pages/LGAResult";
 import StateResult from "../pages/StateResult";
-import ResultWinningAnalysis from "../pages/ResultWinningAnalysis";
+// import ResultWinningAnalysis from "../pages/ResultWinningAnalysis";
 import AdminDashboard from "../pages/AdminDashboard";
 import ReportsPage from "../pages/Reports";
 import MessagesPage from "../pages/Messages";
@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
       { path: "/ward-results", element: <WardResult /> },
       { path: "/lga-results", element: <LGAResult /> },
       { path: "/state-results", element: <StateResult /> },
-      { path: "/results/winning-analysis", element: <ResultWinningAnalysis /> },
+      // { path: "/results/winning-analysis", element: <ResultWinningAnalysis /> },
       { path: "/reports", element: <ReportsPage /> },
       { path: "/messages", element: <MessagesPage /> },
       { path: "/admin", element: <AdminDashboard /> },
