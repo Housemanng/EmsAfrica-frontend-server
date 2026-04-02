@@ -182,10 +182,6 @@
   display: none;
 }
 
-.dash-header__mobile-logo {
-  display: none;
-}
-
 .dash-header__avatar-top {
   display: none;
 }
@@ -439,7 +435,7 @@
     box-shadow: none;
   }
 
-  /* Mobile/tablet: show top bar with avatar, logout, and sidebar toggle (party logo) */
+  /* Mobile/tablet: show top bar with avatar, logout, and sidebar toggle */
   .dash-header {
     flex-direction: column;
     align-items: stretch;
@@ -458,29 +454,6 @@
     align-items: center;
     gap: 0.5rem;
     flex-shrink: 0;
-  }
-
-  .dash-header__mobile-logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .dash-header__mobile-logo-img {
-    height: 2.25rem;
-    width: auto;
-    max-width: 4rem;
-    object-fit: contain;
-    display: block;
-  }
-
-  .dash-header__mobile-logo-text {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--ems-text);
-    letter-spacing: -0.02em;
-    font-family: "Oxygen", system-ui, sans-serif;
   }
 
   .dash-header__avatar-top {

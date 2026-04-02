@@ -684,15 +684,6 @@ export default function Layout() {
               </div>
             </div>
             <div className="dash-header__top-bar-right">
-              <div className="dash-header__mobile-logo">
-                {partyLogo ? (
-                  <img src={partyLogo} alt={partyAcronym || "Logo"} className="dash-header__mobile-logo-img" />
-                ) : (
-                  <span className="dash-header__mobile-logo-text">EMS</span>
-                )}
-              </div>
-             
-
               <div
                   onClick={handleLogout}
                   aria-label="Logout"
