@@ -546,6 +546,29 @@
   flex-shrink: 0;
 }
 
+/* Presence page: election + polling unit filters share row width */
+.dash-table-section__head--presence-filters {
+  justify-content: flex-start;
+  gap: 1rem;
+}
+
+.dash-table-section__election-select {
+  flex: 1 1 320px;
+  min-width: 280px;
+  max-width: none;
+}
+
+.dash-table-section__election-select .searchable-select {
+  width: 100%;
+}
+
+/* Presence page: polling unit search fills remaining header row width */
+.dash-table-section__search--presence-pu {
+  flex: 1 1 320px;
+  min-width: 280px;
+  max-width: none;
+}
+
 .dash-table-wrapper {
   background: var(--ems-bg-elevated);
   border-radius: 0.75rem;
@@ -616,7 +639,11 @@
 }
 
 .dash-table__status--success {
-  background: rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.35);
+  color: #fff;
+}
+.dash-table__status--info {
+  background: rgba(59, 130, 246, 0.35);
   color: #fff;
 }
 .dash-table__status--warning {
@@ -1717,5 +1744,16 @@ textarea.dash-input:focus {
 
   .dash-table-section__search {
     min-width: 100%;
+  }
+
+  .dash-table-section__search--presence-pu {
+    flex: 0 1 auto;
+    width: 100%;
+  }
+
+  .dash-table-section__election-select {
+    flex: 0 1 auto;
+    width: 100%;
+    min-width: 0;
   }
 }

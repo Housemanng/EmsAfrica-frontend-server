@@ -101,6 +101,7 @@ import { selectRegularAdminsByOrganizationId } from "../features/user/userSelect
 import { FiSend } from "react-icons/fi";
 import { MessageStatusIcon } from "../components/MessageStatusIcon";
 import ShareResultModal from "../components/ShareResultModal";
+import { sortElectionsForSelect } from "../utils/sortElectionsForSelect";
 import "./Results.css";
 
 /* Icons for polling unit and election cards */
@@ -1241,8 +1242,10 @@ export default function Results() {
 
   const electionsList = useMemo(
     () =>
-      (Array.isArray(elections) ? elections : []).filter(
-        (e: { _id?: string; name?: string; status?: string }) => e.status === "active",
+      sortElectionsForSelect(
+        (Array.isArray(elections) ? elections : []).filter(
+          (e: { _id?: string; name?: string; status?: string }) => e.status === "active",
+        ),
       ),
     // elections is a direct Redux cache reference — stable unless data changes
     // eslint-disable-next-line react-hooks/exhaustive-deps

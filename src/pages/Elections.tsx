@@ -1026,7 +1026,7 @@ export default function Elections() {
                             e.status === "active"
                               ? "dash-table__status--success"
                               : e.status === "concluded"
-                                ? "dash-table__status"
+                                ? "dash-table__status--info"
                                 : "dash-table__status--warning"
                           }`}
                         >
@@ -1554,7 +1554,7 @@ export default function Elections() {
                     viewingElection.status === "active"
                       ? "dash-table__status--success"
                       : viewingElection.status === "concluded"
-                        ? "dash-table__status"
+                        ? "dash-table__status--info"
                         : "dash-table__status--warning"
                   }`}
                 >

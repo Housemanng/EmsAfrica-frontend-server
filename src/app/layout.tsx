@@ -8,6 +8,8 @@ import UserDetailsModal from "../components/UserDetailsModal";
 import api from "../config/apiConfig";
 import { getConversations, getMyMessages } from "../features/messages/messageApi";
 import { selectUnreadCount, selectTotalConversationUnread } from "../features/messages/messageSelectors";
+import { getElectionsByOrganizationId } from "../features/elections/electionApi";
+import { useElectionSocket } from "../hooks/useElectionSocket";
 import "./Layout.css";
 import "../pages/Dashboard.css";
 
@@ -26,19 +28,20 @@ const IconGrid = () => (
     <rect x="14" y="14" width="7" height="7" rx="1" />
   </svg>
 );
-const IconChart = () => (
-  <svg
-    className="dash-sidebar__icon"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M18 20V10" />
-    <path d="M12 20V4" />
-    <path d="M6 20v-6" />
-  </svg>
-);
+// Analytics sidebar — restore when ready
+// const IconChart = () => (
+//   <svg
+//     className="dash-sidebar__icon"
+//     viewBox="0 0 24 24"
+//     fill="none"
+//     stroke="currentColor"
+//     strokeWidth="2"
+//   >
+//     <path d="M18 20V10" />
+//     <path d="M12 20V4" />
+//     <path d="M6 20v-6" />
+//   </svg>
+// );
 const IconFile = () => (
   <svg
     className="dash-sidebar__icon"
@@ -330,6 +333,16 @@ export default function Layout() {
     return () => clearInterval(interval);
   }, [dispatch, organizationId, user?.id, role]);
 
+  // Real-time: keep elections list in sync across the app (dashboard dropdown, results, etc.)
+  useElectionSocket(
+    organizationId,
+    user?.id ?? null,
+    () => {
+      if (!organizationId) return;
+      dispatch(getElectionsByOrganizationId({ organizationId, query: { includeResults: true } }));
+    }
+  );
+
   useEffect(() => {
     if (!user?.id || !token) return;
     if (userFetchedRef.current) return;
@@ -502,6 +515,7 @@ export default function Layout() {
                 {location.pathname === "/presence" && <IconChevronRight />}
               </Link>
             )}
+            {/* Analytics — restore when ready (was duplicate /dashboard link)
             {isOverviewRole && (
               <Link
                 to="/dashboard"
@@ -511,6 +525,7 @@ export default function Layout() {
                 <IconChart /> Analytics
               </Link>
             )}
+            */}
             {isOverviewRole && (
               <Link
                 to="/accreditation"

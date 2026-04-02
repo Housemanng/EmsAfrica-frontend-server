@@ -21,6 +21,7 @@ import { getWardsByLGA } from "../features/wards/wardApi";
 import { selectWardsByLGA } from "../features/wards/wardSelectors";
 import { getPollingUnitsByWard } from "../features/pollingUnits/pollingUnitApi";
 import { selectPollingUnitsByWard } from "../features/pollingUnits/pollingUnitSelectors";
+import { sortElectionsForSelect } from "../utils/sortElectionsForSelect";
 import "./Reports.css";
 
 /* ── Icons ────────────────────────────────────────────────────────────────── */
@@ -353,7 +354,7 @@ export default function Reports() {
               onChange={(val) => { setSelectedElectionId(val); setSelectedCategory(""); }}
               options={[
                 { value: "", label: "— Select election —" },
-                ...elections.map((el) => ({ value: el._id, label: el.name })),
+                ...sortElectionsForSelect(elections).map((el) => ({ value: el._id, label: el.name })),
               ]}
               placeholder="Search or select election…"
             />

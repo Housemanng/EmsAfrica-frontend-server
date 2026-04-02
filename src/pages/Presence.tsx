@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
 import {
@@ -27,6 +27,7 @@ import {
 } from "../features/wards";
 import SearchableSelect from "../components/SearchableSelect";
 import { usePresenceSocket } from "../hooks/usePresenceSocket";
+import { sortElectionsForSelect } from "../utils/sortElectionsForSelect";
 import "./Dashboard.css";
 
 const IconChevronCard = () => (
@@ -94,8 +95,12 @@ export default function Presence() {
   const [viewingRow, setViewingRow] = useState<ReportRow | null>(null);
 
   const elections = useSelector(
-    (state: RootState) => selectElectionsByOrganizationId(organizationId ?? "")(state) as Array<{ _id: string; name: string; electionDate?: string }> | undefined
+    (state: RootState) =>
+      selectElectionsByOrganizationId(organizationId ?? "")(state) as
+        | Array<{ _id: string; name: string; electionDate?: string; status?: string }>
+        | undefined
   ) ?? [];
+  const sortedElections = useMemo(() => sortElectionsForSelect(elections), [elections]);
   const electionsLoading = useSelector(
     (state: RootState) => selectElectionsByOrganizationIdLoading(organizationId ?? "")(state)
   );
@@ -195,12 +200,19 @@ export default function Presence() {
 
   const electionOptions = [
     { value: "", label: "Select election" },
-    ...(electionsLoading ? [] : elections.map((e) => ({
-      value: e._id,
-      label: e.electionDate
-        ? `${e.name} (${new Date(e.electionDate).getFullYear()})`
-        : (e.name ?? ""),
-    }))),
+    ...(electionsLoading
+      ? []
+      : sortedElections.map((e) => {
+          const base = e.electionDate
+            ? `${e.name} (${new Date(e.electionDate).getFullYear()})`
+            : (e.name ?? "");
+          const statusPart = e.status ? ` (${String(e.status).toUpperCase()})` : "";
+          return {
+            value: e._id,
+            label: `${base}${statusPart}`,
+            ...(e.status ? { primaryLabel: base, electionStatus: e.status } : {}),
+          };
+        })),
   ];
   const reportRows = (reportData?.rows ?? []).filter((r) => {
     const q = search.toLowerCase();
@@ -238,8 +250,11 @@ export default function Presence() {
         </div>
       </div>
 
-      <div className="dash-table-section__head" style={{ marginBottom: "1rem", alignItems: "flex-end" }}>
-        <div style={{ minWidth: "260px" }}>
+      <div
+        className="dash-table-section__head dash-table-section__head--presence-filters"
+        style={{ marginBottom: "1rem", alignItems: "flex-end" }}
+      >
+        <div className="dash-table-section__election-select">
           <SearchableSelect
             id="presence-election"
             label="Election"
@@ -250,7 +265,7 @@ export default function Presence() {
             disabled={electionsLoading}
           />
         </div>
-        <div className="dash-table-section__search">
+        <div className="dash-table-section__search dash-table-section__search--presence-pu">
           <IconSearch />
           <input
             type="text"

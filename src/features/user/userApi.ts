@@ -310,6 +310,7 @@ export const updateUserByOrganizationId = createAsyncThunk(
         dateOfBirth?: string;
         description?: string;
         isSuspended?: boolean;
+        role?: string;
       };
     },
     { getState, rejectWithValue }

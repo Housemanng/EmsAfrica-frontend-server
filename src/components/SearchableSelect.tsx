@@ -1,9 +1,36 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import "./SearchableSelect.css";
 
-interface Option {
+export interface SearchableSelectOption {
   value: string;
   label: string;
+  /** With `electionStatus`, shown as main text while status is colored separately */
+  primaryLabel?: string;
+  /** When set with `primaryLabel`, status is shown in active (green) / concluded (blue) / upcoming (amber) */
+  electionStatus?: string;
+}
+
+function electionStatusBadgeClass(status: string | undefined): string {
+  const s = (status ?? "").toLowerCase();
+  if (s === "active") return "searchable-select__option-badge searchable-select__option-badge--active";
+  if (s === "concluded") return "searchable-select__option-badge searchable-select__option-badge--concluded";
+  if (s === "upcoming") return "searchable-select__option-badge searchable-select__option-badge--upcoming";
+  return "searchable-select__option-badge searchable-select__option-badge--muted";
+}
+
+function renderOptionVisual(opt: SearchableSelectOption): ReactNode {
+  if (opt.electionStatus) {
+    const title = opt.primaryLabel ?? opt.label;
+    return (
+      <span className="searchable-select__option-row">
+        <span className="searchable-select__option-title">{title}</span>
+        <span className={electionStatusBadgeClass(opt.electionStatus)}>
+          ({String(opt.electionStatus).toUpperCase()})
+        </span>
+      </span>
+    );
+  }
+  return opt.label;
 }
 
 interface SearchableSelectProps {
@@ -11,7 +38,7 @@ interface SearchableSelectProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: Option[];
+  options: SearchableSelectOption[];
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
@@ -33,7 +60,7 @@ export default function SearchableSelect({
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const displayLabel = options.find((o) => o.value === value)?.label ?? value;
+  const selectedOption = options.find((o) => o.value === value);
 
   const filtered =
     searchable
@@ -54,7 +81,7 @@ export default function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (opt: Option) => {
+  const handleSelect = (opt: SearchableSelectOption) => {
     onChange(opt.value);
     setSearch("");
     setIsOpen(false);
@@ -85,8 +112,14 @@ export default function SearchableSelect({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="searchable-select__value">
-            {displayLabel || <span className="searchable-select__placeholder">{placeholder}</span>}
+          <span className="searchable-select__value searchable-select__value--multiline">
+            {selectedOption ? (
+              renderOptionVisual(selectedOption)
+            ) : value ? (
+              value
+            ) : (
+              <span className="searchable-select__placeholder">{placeholder}</span>
+            )}
           </span>
         )}
         <span className="searchable-select__chevron">▼</span>
@@ -104,7 +137,7 @@ export default function SearchableSelect({
                 aria-selected={opt.value === value}
                 onClick={() => handleSelect(opt)}
               >
-                {opt.label}
+                {renderOptionVisual(opt)}
               </li>
             ))
           )}

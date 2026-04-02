@@ -113,8 +113,15 @@ interface OrgUser {
   createdBy?: { firstName?: string; lastName?: string } | string;
 }
 
-const canEditUsers = (role: string | null) =>
-  role === "superadmin" || role === "executive";
+const canEditUsers = (role: string | null) => {
+  const r = (role ?? "").toLowerCase().trim();
+  return r === "superadmin" || r === "executive" || r === "regular";
+};
+
+const canChangeUserRole = (role: string | null) => {
+  const r = (role ?? "").toLowerCase().trim();
+  return r === "superadmin" || r === "executive";
+};
 
 /** Org-level roles: no state/lga/ward/pollingUnit required */
 const ORG_LEVEL_ROLES = ["regular", "executive", "superadmin"];
@@ -175,6 +182,7 @@ export default function UserManagement() {
   const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
   const [editingUser, setEditingUser] = useState<OrgUser | null>(null);
   const [editForm, setEditForm] = useState({
+    role: "executive",
     firstName: "",
     lastName: "",
     email: "",
@@ -514,6 +522,7 @@ export default function UserManagement() {
   const handleEditUser = (u: OrgUser) => {
     setEditingUser(u);
     setEditForm({
+      role: u.role ?? "regular",
       firstName: u.firstName ?? "",
       lastName: u.lastName ?? "",
       email: u.email ?? "",
@@ -536,11 +545,13 @@ export default function UserManagement() {
     setEditError("");
     setEditLoading(true);
     try {
+      const includeRole = canChangeUserRole(role);
       await dispatch(
         updateUserByOrganizationId({
           organizationId,
           id: editingUser._id,
           body: {
+            role: includeRole ? editForm.role : undefined,
             firstName: editForm.firstName.trim(),
             lastName: editForm.lastName.trim(),
             email: editForm.email.trim(),
@@ -876,7 +887,6 @@ export default function UserManagement() {
               <thead>
                 <tr>
                   <th className="dash-table__name-col">Name</th>
-                  <th>Email</th>
                   <th>Phone</th>
                   <th className="dash-table__role-col">Role</th>
                   <th>Created</th>
@@ -886,7 +896,7 @@ export default function UserManagement() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="dash-table__empty">
+                    <td colSpan={5} className="dash-table__empty">
                       No Agent in this organization.
                     </td>
                   </tr>
@@ -908,7 +918,6 @@ export default function UserManagement() {
                           </span>
                         </div>
                       </td>
-                      <td>{u.email ?? "—"}</td>
                       <td>{u.phoneNumber ?? "—"}</td>
                       <td className="dash-table__role-col">
                         <span className="dash-table__status">
@@ -947,7 +956,7 @@ export default function UserManagement() {
                               <button
                                 type="button"
                                 className="dash-page__btn dash-page__btn--outline"
-                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#059669" }}
+                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#fff" }}
                                 onClick={() => handleChangePassword(u)}
                               >
                                 Change password
@@ -955,7 +964,7 @@ export default function UserManagement() {
                               <button
                                 type="button"
                                 className="dash-page__btn dash-page__btn--outline"
-                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: u.isSuspended ? "#059669" : "#d97706" }}
+                                style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem", color: "#fff" }}
                                 onClick={() => handleSuspendUser(u)}
                               >
                                 {u.isSuspended ? "Unsuspend" : "Suspend"}
@@ -1441,6 +1450,18 @@ export default function UserManagement() {
               Update details for {[editingUser.firstName, editingUser.lastName].filter(Boolean).join(" ")}.
             </p>
             <form onSubmit={handleEditSubmit} className="dash-modal__form dash-modal__form--create-user">
+              <div className="dash-modal__field dash-modal__field--full">
+                <SearchableSelect
+                  id="edit-role"
+                  label="Role"
+                  value={editForm.role}
+                  onChange={(val) => setEditForm((f) => ({ ...f, role: val }))}
+                  options={createUserRoles}
+                  placeholder="Search or select role..."
+                  required
+                  disabled={!canChangeUserRole(role)}
+                />
+              </div>
               <div className="dash-modal__field">
                 <label>First name</label>
                 <input

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../app/store";
 import {
@@ -26,6 +26,8 @@ import { selectWardsByLGA } from "../features/wards/wardSelectors";
 import { getPollingUnitsByWard, getAllAccreditationByOrganization, getOverVotingByOrganization } from "../features/pollingUnits/pollingUnitApi";
 import { selectPollingUnitsByWard, selectAllAccreditationByOrganization, selectOverVotingByOrganization } from "../features/pollingUnits/pollingUnitSelectors";
 import { useResultSocket } from "../hooks/useResultSocket";
+import SearchableSelect from "../components/SearchableSelect";
+import { sortElectionsForSelect } from "../utils/sortElectionsForSelect";
 import "./ResultWinningAnalysis.css";
 
 const POSITION_LABELS = ["Leading", "Runner-up", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
@@ -91,7 +93,8 @@ export default function Dashboard() {
   }>({ lgaId: "", wardId: "", pollingUnitId: "" });
   const [showViewMorePartiesModal, setShowViewMorePartiesModal] = useState(false);
 
-  const electionsQuery = { status: "concluded" as const, includeResults: true };
+  // Include active + upcoming too so newly created elections appear in dropdown
+  const electionsQuery = { includeResults: true };
   const elections = useSelector((s: RootState) =>
     selectElectionsByOrganizationId(organizationId ?? "", electionsQuery)(s)
   ) ?? [];
@@ -130,16 +133,40 @@ export default function Dashboard() {
         return t === electionTypeFilter;
       })
     : elections;
+
+  const sortedFilteredElections = useMemo(
+    () => sortElectionsForSelect(filteredElections),
+    [filteredElections]
+  );
+
+  const electionSelectOptions = useMemo(
+    () => [
+      { value: "", label: "Select election…" },
+      ...sortedFilteredElections.map((e) => {
+        const name = (e.name ?? e._id ?? "").trim() || "—";
+        const st = (e as { status?: string }).status;
+        const statusPart = st ? ` (${String(st).toUpperCase()})` : "";
+        return {
+          value: String(e._id ?? ""),
+          label: `${name}${statusPart}`,
+          ...(st ? { primaryLabel: name, electionStatus: st } : {}),
+        };
+      }),
+    ],
+    [sortedFilteredElections]
+  );
+
   const selectedElection = elections.find((e) => e._id === selectedElectionId);
 
   useEffect(() => {
-    if (electionTypeFilter === "governorship" && filteredElections.length > 0) {
-      const currentInFiltered = selectedElectionId && filteredElections.some((e) => e._id === selectedElectionId);
+    if (electionTypeFilter === "governorship" && sortedFilteredElections.length > 0) {
+      const currentInFiltered =
+        selectedElectionId && sortedFilteredElections.some((e) => e._id === selectedElectionId);
       if (!currentInFiltered) {
-        setSelectedElectionId(filteredElections[0]._id ?? "");
+        setSelectedElectionId(sortedFilteredElections[0]._id ?? "");
       }
     }
-  }, [electionTypeFilter, filteredElections, selectedElectionId]);
+  }, [electionTypeFilter, sortedFilteredElections, selectedElectionId]);
   const stateId =
     selectedElection?.state?._id ??
     (selectedElection?.state as { id?: string })?.id ??
@@ -417,21 +444,17 @@ export default function Dashboard() {
           </div>
         )}
         <div className="result-dash-filters__item">
-          <label>Election</label>
-          <select
+          <SearchableSelect
+            id="result-dash-election"
+            label="Election"
             value={selectedElectionId}
-            onChange={(e) => {
-              setSelectedElectionId(e.target.value);
+            onChange={(id) => {
+              setSelectedElectionId(id);
               setFilter({ lgaId: "", wardId: "", pollingUnitId: "" });
             }}
-          >
-            <option value="">Select election…</option>
-            {filteredElections.map((e) => (
-              <option key={e._id} value={e._id}>
-                {e.name ?? e._id}
-              </option>
-            ))}
-          </select>
+            options={electionSelectOptions}
+            placeholder="Search or select election…"
+          />
         </div>
         {selectedElectionId && stateId && (
           <>
